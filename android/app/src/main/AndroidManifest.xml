@@ -5,7 +5,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application
-        android:label="Attendo"
+        android:enableOnBackInvokedCallback="true"
+        android:label="SmartOrder"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

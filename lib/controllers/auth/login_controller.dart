@@ -7,9 +7,8 @@ import 'package:flatten/controllers/my_controller.dart';
 import 'package:flatten/helpers/services/auth_service.dart';
 import 'package:flatten/helpers/widgets/my_form_validator.dart';
 import 'package:flatten/helpers/widgets/my_validators.dart';
-import 'package:flatten/views/auth/login.dart';
+import 'package:flatten/myPages/customerHome.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flatten/models/user.dart';
@@ -23,15 +22,12 @@ class LoginController extends MyController {
   UserModel userModel = UserModel();
   String? userImage;
 
-  // final String _dummyEmail = "jayasuryaarulselvam26@gmail.com";
-  // final String _dummyPassword = "Mvdf@2025";
-
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   @override
   void onInit() {
     super.onInit();
-    _fetchUser();
+    // fetchUser();
     basicValidator.addField(
       'email',
       required: true,
@@ -49,101 +45,16 @@ class LoginController extends MyController {
     );
   }
 
-  Future<void> _fetchUser() async {
+  Future<UserModel?> fetchUser() async {
     SharedPreferences pref = await SharedPreferences.getInstance();
     String? userId = pref.getString("email");
     if (userId != null) {
-      await fetchUserByValue(userId);
+      UserModel? userModel = await fetchUserByValue(userId);
+      return userModel;
     }
   }
 
-  void onChangeShowPassword() {
-    showPassword = !showPassword;
-    update();
-  }
-
-  Future<void> onLogin() async {
-    String nextUrl =
-        Uri.parse(
-          ModalRoute.of(Get.context!)?.settings.name ?? "",
-        ).queryParameters['next'] ??
-        "/";
-    Get.toNamed(nextUrl);
-
-    // if (basicValidator.validateForm()) {
-    //   loading = true;
-    //   update();
-    //   var errors = await AuthService.loginUser(basicValidator.getData());
-    //   if (errors != null) {
-    //     basicValidator.addErrors(errors);
-    //     basicValidator.validateForm();
-    //     basicValidator.clearErrors();
-    //   } else {
-    //     String nextUrl =
-    //         Uri.parse(
-    //           ModalRoute.of(Get.context!)?.settings.name ?? "",
-    //         ).queryParameters['next'] ??
-    //             "/dashboard";
-    //     Get.toNamed(nextUrl);
-    //   }
-    //   loading = false;
-    //   update();
-    // }
-  }
-
-  // ===============================
-  // LOGIN via Node.js Backend
-  // ===============================
-
-  Future<void> loginNodeErpnext() async {
-    // if (!basicValidator.validateForm()) return;
-
-    loading = true;
-    update();
-
-    Map<String, dynamic> data = basicValidator.getData();
-    String email = data['email'];
-    String password = data['password'];
-
-    final url = Uri.parse("$backendUrl/login");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
-      );
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        final session = body['session']; // ✅ fixed
-
-        SharedPreferences pref = await SharedPreferences.getInstance();
-        await pref.setString("session_id", session);
-        await pref.setString("email", email);
-        AuthService.sessionId = session;
-
-        print("✅ Session stored: $session");
-        await fetchUserByValue(email);
-        loading = false;
-        update();
-        goToDashboard();
-      } else {
-        loading = false;
-        update();
-        print('❌ Login failed: ${response.body}');
-      }
-    } catch (e) {
-      loading = false;
-      update();
-      print('⚠️ Error during login: $e');
-    }
-
-    loading = false;
-    update();
-  }
-
-  Future<String?> loginToERPNext() async {
+  Future<String?> loginToERPNext(BuildContext context) async {
     loading = true;
     update();
     Map<String, dynamic> data = basicValidator.getData();
@@ -155,10 +66,10 @@ class LoginController extends MyController {
       final response = await http
           .post(
             url,
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            body: {"usr": email, "pwd": password},
+            headers: {"Content-Type": "application/json"},
+            body: {"username": email, "pwd": password},
           )
-          .timeout(Duration(seconds: 20)); // ⏳ Set timeout (10 seconds)
+          .timeout(Duration(seconds: 20));
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         print("body$body");
@@ -173,7 +84,10 @@ class LoginController extends MyController {
           await fetchUserByValue(email);
           loading = false;
           update();
-          goToDashboard();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => CustomerHomeScreen()),
+          );
         }
       } else {
         toastMessage(message: "Login Failed: ${response.body}");
@@ -189,14 +103,14 @@ class LoginController extends MyController {
     return null;
   }
 
-  Future<void> fetchUserByValue(String value) async {
+  Future<UserModel?> fetchUserByValue(String value) async {
     if (AuthService.sessionId == null) {
       print("❌ No session found. Please login first.");
-      return;
+      return null;
     }
 
     final url = Uri.parse(
-      "$baseUrl/api/method/my_api_app.api_methods.hr_modules_api.get_user_by_email_or_mobile?value=$value",
+      "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_customer_user_details?value=$value",
     );
 
     try {
@@ -210,23 +124,15 @@ class LoginController extends MyController {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // Frappe APIs wrap return values inside 'message' by default
         final message = data['message'] ?? data;
 
         if (message is Map && message.containsKey('error')) {
           print("❌ Error: ${message['error']}");
-          return;
+          return null;
         }
 
         userModel = UserModel.fromJson(message);
-        await fetchImageBase64();
-
-        print(
-          "✅ User fetched: ${userModel.fullName}, ${userModel.company}, ${userModel.department}",
-        );
-
-        update();
+        return userModel;
       } else {
         print("❌ HTTP Error ${response.statusCode}: ${response.body}");
       }
@@ -265,57 +171,6 @@ class LoginController extends MyController {
     }
   }
 
-  // Future<void> fetchUserByEmail(String email) async {
-  //   if (AuthService.sessionId == null) {
-  //     print("❌ No session found. Please login first.");
-  //     return;
-  //   }
-  //
-  //   // final url = Uri.parse("$backendUrl/get_user");
-  //
-  //   final url = Uri.parse(
-  //     "$baseUrl/api/method/my_api_app.api_methods.hr_modules_api.get_user_by_email?email=$email",
-  //   );
-  //
-  //   final Map<String, dynamic> body = {
-  //     'cookie': AuthService.sessionId,
-  //     'email': email,
-  //   };
-  //
-  //   try {
-  //     final response = await http.post(
-  //       url,
-  //       headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-  //       body: jsonEncode(body),
-  //     );
-  //
-  //     if (response.statusCode == 200) {
-  //       final data = jsonDecode(response.body);
-  //
-  //       if (data.containsKey('error')) {
-  //         print("❌ Error: ${data['error']}");
-  //         return;
-  //       }
-  //
-  //       // Create User model from JSON
-  //       userModel = UserModel.fromJson(data);
-  //       await fetchImageBase64();
-  //
-  //       print(
-  //         "User fetched: ${userModel!.stockUser}, ${userModel!.accountUser}, ${userModel!.company}, ${userModel!.image}",
-  //       );
-  //
-  //       update(); // if inside GetX controller
-  //     } else {
-  //       print("❌ HTTP Error ${response.statusCode}: ${response.body}");
-  //     }
-  //   } on SocketException {
-  //     print("⚠️ Connection Error: Cannot reach backend ($backendUrl)");
-  //   } catch (e) {
-  //     print("⚠️ Unexpected Error: ${e.toString()}");
-  //   }
-  // }
-
   Future<void> fetchImageBase64() async {
     String? imagePath = userModel.image;
     String? sessionId = AuthService.sessionId;
@@ -325,9 +180,6 @@ class LoginController extends MyController {
         "$baseUrl/api/method/my_api_app.api_methods.hr_modules_api.user_image_base64?image_path=$imagePath&cookie=$sessionId",
       );
 
-      // final url = Uri.parse(
-      //   "$backendUrl/user_image_base64?image_path=$imagePath&cookie=$sessionId",
-      // );
       print("url$url");
       try {
         final response = await http.get(url);
@@ -341,17 +193,5 @@ class LoginController extends MyController {
         print("Error fetching image: $e");
       }
     }
-  }
-
-  void goToForgotPassword() {
-    Get.toNamed('/auth/forgot_password');
-  }
-
-  void gotoRegister() {
-    Get.toNamed('/auth/register');
-  }
-
-  void goToDashboard() {
-    Get.toNamed('/default');
   }
 }

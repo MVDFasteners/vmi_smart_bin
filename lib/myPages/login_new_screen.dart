@@ -1,18 +1,10 @@
 import 'package:flatten/app_constant.dart';
 import 'package:flatten/controllers/auth/login_controller.dart';
-import 'package:flatten/controllers/mycontroller/attendance_controller.dart';
-import 'package:flatten/helpers/extensions/string.dart';
 import 'package:flatten/helpers/theme/app_style.dart';
 import 'package:flatten/helpers/utils/mixins/ui_mixin.dart';
-import 'package:flatten/helpers/widgets/my_button.dart';
-import 'package:flatten/helpers/widgets/my_spacing.dart';
-import 'package:flatten/helpers/widgets/my_text.dart';
-import 'package:flatten/helpers/widgets/my_text_style.dart';
-import 'package:flatten/views/layouts/auth_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:get/instance_manager.dart';
 import 'package:get/state_manager.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
 
 class LoginPageNew extends StatelessWidget {
   @override
@@ -64,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen>
             return SizedBox.expand(
               child: Stack(
                 children: [
-                  // Header shadow
                   Positioned(
                     top: 0,
                     left: 0,
@@ -132,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 ),
                                 Text(
-                                  'MVD Group',
+                                  'MV Group',
                                   style: TextStyle(
                                     fontSize: 48,
                                     color: Colors.white,
@@ -163,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                         const SizedBox(height: 18),
-                        // Glassmorphic login form
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 22.0),
                           child: Container(
@@ -258,7 +248,11 @@ class _LoginScreenState extends State<LoginScreen>
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton(
-                                      onPressed: controller.loginToERPNext,
+                                      onPressed: () async {
+                                        await controller.loginToERPNext(
+                                          context,
+                                        );
+                                      },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: themeColor,
                                         shape: RoundedRectangleBorder(

@@ -12,7 +12,6 @@ import 'package:flatten/helpers/widgets/my_constant.dart';
 import 'package:flatten/helpers/widgets/my_screen_media.dart';
 import 'package:flatten/helpers/widgets/my_text_style.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 ThemeData get theme => AppTheme.theme;
 

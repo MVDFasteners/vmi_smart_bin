@@ -7,10 +7,8 @@ final DateFormat dateFormatter = DateFormat('dd/MM/yyyy');
 final DateFormat timeFormatter = DateFormat('jms');
 
 String baseUrl = "http://208.115.124.12:8000";
-// String baseUrl = "http://192.168.1.143:8000";
-String backendUrl = "http://192.168.1.43:3000";
 
-toastMessage({String message = ""}) {
+void toastMessage({String message = ""}) {
   Fluttertoast.showToast(
     msg: message,
     toastLength: Toast.LENGTH_SHORT,
@@ -22,7 +20,7 @@ toastMessage({String message = ""}) {
 
 void showCustomToast(String message, context) {
   FToast fToast = FToast();
-  fToast.init(context); // Use your BuildContext if available
+  fToast.init(context);
 
   Widget toast = Container(
     padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),

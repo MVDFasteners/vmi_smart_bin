@@ -16,9 +16,9 @@ class My {
     AppTheme.textDirection = direction;
   }
 
-  static void changeFontFamily(GoogleFontFunction fontFamily) {
-    MyTextStyle.changeFontFamily(fontFamily);
-  }
+  // static void changeFontFamily(GoogleFontFunction fontFamily) {
+  //   MyTextStyle.changeFontFamily(fontFamily);
+  // }
 
   static void changeDefaultFontWeight(Map<int, FontWeight> defaultFontWeight) {
     MyTextStyle.changeDefaultFontWeight(defaultFontWeight);
