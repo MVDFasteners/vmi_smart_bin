@@ -213,39 +213,61 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: TextFormField(
-                      onChanged: (value) async {
-                        if (_debounce?.isActive ?? false) {
-                          _debounce!.cancel();
-                        }
-                        _debounce = Timer(
-                          const Duration(milliseconds: 400),
-                          () async {
-                            await controller.onSearchChanged(value, user: user);
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: controller.selectAll,
+                          onChanged: (v) {
+                            if (controller.selectAll) {
+                              controller.selectAll = false;
+                            } else {
+                              controller.selectAll = true;
+                            }
+                            // controller.update();
+                            controller.onSelectAll(controller.soItemList, v!);
                           },
-                        );
-                      },
-                      textInputAction: TextInputAction.search,
-                      onFieldSubmitted: (v) {
-                        controller.onSearchChanged(v, user: user);
-                      },
-                      controller: controller.searchController,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: "Search item code, name...",
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.only(top: 14),
-                        suffixIcon: controller.searchController.text.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.clear, size: 20),
-                                onPressed: () async {
-                                  if (user != null) {
-                                    await controller.clearSearch(user!);
-                                  }
+                        ),
+                        Expanded(
+                          child: TextFormField(
+                            onChanged: (value) async {
+                              if (_debounce?.isActive ?? false) {
+                                _debounce!.cancel();
+                              }
+                              _debounce = Timer(
+                                const Duration(milliseconds: 400),
+                                () async {
+                                  await controller.onSearchChanged(
+                                    value,
+                                    user: user,
+                                  );
                                 },
-                              ),
-                      ),
+                              );
+                            },
+                            textInputAction: TextInputAction.search,
+                            onFieldSubmitted: (v) {
+                              controller.onSearchChanged(v, user: user);
+                            },
+                            controller: controller.searchController,
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(Icons.search),
+                              hintText: "Search item code, name...",
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.only(top: 14),
+                              suffixIcon:
+                                  controller.searchController.text.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      icon: const Icon(Icons.clear, size: 20),
+                                      onPressed: () async {
+                                        if (user != null) {
+                                          await controller.clearSearch(user!);
+                                        }
+                                      },
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -370,6 +392,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                                     ),
                                                     Text(
                                                       "SO: ${item.salesOrder}",
+                                                      style: const TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.black54,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "Due Date: ${item.deliveryDate}",
                                                       style: const TextStyle(
                                                         fontSize: 13,
                                                         color: Colors.black54,

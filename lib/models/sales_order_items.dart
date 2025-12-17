@@ -1,7 +1,9 @@
 class SoPriority {
   final String? company;
   final double? qty;
+  final double? rate;
   final String? uom;
+  final double? amount;
   final String? salesOrder;
   final String? itemCode;
   final String? itemName;
@@ -16,14 +18,18 @@ class SoPriority {
   final String? dispatchedDate;
   String? deliveryDate;
   final String? customerPo;
-  final String? customerBackUpStock;
+  final double? customerBackUpStock;
   final String? totalBins;
   String? clearedBins;
+  final int? isBulkSubmit;
 
   SoPriority({
     this.company,
+    this.isBulkSubmit,
     this.qty,
+    this.rate,
     this.uom,
+    this.amount,
     this.salesOrder,
     this.itemCode,
     this.itemName,
@@ -48,6 +54,8 @@ class SoPriority {
       company: json['company'],
       qty: json['qty'],
       uom: json['uom'],
+      rate: json['rate'],
+      amount: json['amount'],
       salesOrder: json['sales_order'],
       deliveryDate: json['delivery_date'],
       itemCode: json['item_code'],
@@ -56,15 +64,16 @@ class SoPriority {
       majorItem: json['major'],
       status: json['bin_status'],
       idx: json['idx'],
-      soiName: json['name'],
+      soiName: json['soi_name'],
       makeReadyDate: json['make_ready_date'],
       preparationDate: json['preparation_date'],
       dispatchedDate: json['dispatched_date'],
       itemName: json['item_name'],
       customerPo: json['customer_po'],
-      customerBackUpStock: json['customer_backup_stock'],
+      customerBackUpStock: json['stock_qty'],
       totalBins: json['number_of_bins'],
       clearedBins: json['number_of_times_submit'],
+      isBulkSubmit: json['bulk_submit'],
     );
   }
 

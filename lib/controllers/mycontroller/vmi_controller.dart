@@ -17,7 +17,8 @@ class VMIController extends GetxController {
   List<BinDetails> binDetails = [];
   List<SoPriority> cartList = [];
   List<ReportListModel> reportList = [];
-
+  bool selectAll = false;
+  bool isSubmittingCartItems = false;
   bool reportLoading = false;
   bool itemLoading = false;
   bool onSubmitLoading = false;
@@ -80,6 +81,40 @@ class VMIController extends GetxController {
 
   String _formatDate(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
+  void onSelectAll(List<SoPriority> soItemList, bool value) {
+    if (value) {
+      for (SoPriority item in soItemList) {
+        final exists = cartList.any(
+          (cartItem) =>
+              cartItem.itemCode == item.itemCode &&
+              cartItem.salesOrder == item.salesOrder,
+        );
+        if (!exists) {
+          if (item.status == "NOT YET USED") {
+            cartList.add(item);
+          }
+        }
+        update();
+      }
+    } else {
+      for (SoPriority item in soItemList) {
+        final exists = cartList.any(
+          (cartItem) =>
+              cartItem.itemCode == item.itemCode &&
+              cartItem.salesOrder == item.salesOrder,
+        );
+        if (exists) {
+          cartList.removeWhere(
+            (cartItem) =>
+                cartItem.itemCode == item.itemCode &&
+                cartItem.salesOrder == item.salesOrder,
+          );
+        }
+        update();
+      }
+    }
   }
 
   void onAddCart(SoPriority item) {
@@ -388,38 +423,50 @@ class VMIController extends GetxController {
     }
   }
 
-  Future<void> updateSOItems(UserModel user) async {
+  Future<void> updateSOItems(UserModel user, BuildContext context) async {
+    isSubmittingCartItems = true;
+    update();
     List<SoPriority> readyToOrder = [];
     List<SoPriority> binUpdateList = [];
+
+    if (AuthService.sessionId == null) {
+      print("❌ No session found. Please login first.");
+      isSubmittingCartItems = false;
+      update();
+      return;
+    }
+
     for (SoPriority item in cartList) {
       item.deliveryDate = fixDateIfAfterToday(item.deliveryDate);
       item.makeReadyDate = fixDateIfAfterToday(item.makeReadyDate);
       item.status = "MAKE READY";
-      int totalBins = int.parse(
-        item.totalBins == "" || item.totalBins == null ? "1" : item.totalBins!,
-      );
-      int clearedBins =
-          int.parse(
-            item.clearedBins == "" || item.clearedBins == null
-                ? "0"
-                : item.clearedBins!,
-          ) +
-          1;
 
-      if (totalBins <= clearedBins) {
+      if (item.isBulkSubmit == 1) {
         readyToOrder.add(item);
       } else {
-        item.clearedBins = clearedBins.toString();
-        binUpdateList.add(item);
+        int totalBins = int.parse(
+          item.totalBins == "" || item.totalBins == null
+              ? "1"
+              : item.totalBins!,
+        );
+        int clearedBins =
+            int.parse(
+              item.clearedBins == "" || item.clearedBins == null
+                  ? "0"
+                  : item.clearedBins!,
+            ) +
+            1;
+
+        if (totalBins <= clearedBins) {
+          readyToOrder.add(item);
+        } else {
+          item.clearedBins = clearedBins.toString();
+          binUpdateList.add(item);
+        }
+
+        print(readyToOrder);
       }
     }
-
-    if (AuthService.sessionId == null) {
-      print("❌ No session found. Please login first.");
-      return;
-    }
-
-    print(readyToOrder);
 
     if (binUpdateList.isNotEmpty) {
       List<Map<String, dynamic>> toUpdateBins = binUpdateList
@@ -427,6 +474,8 @@ class VMIController extends GetxController {
           .toList();
 
       await updateBinAssignment(toUpdateBins);
+      isSubmittingCartItems = false;
+      update();
     }
 
     List<Map<String, dynamic>> clearSubmittedBins = readyToOrder
@@ -434,8 +483,12 @@ class VMIController extends GetxController {
         .toList();
 
     await updateBinAssignment(clearSubmittedBins);
+    isSubmittingCartItems = false;
+    update();
 
     if (readyToOrder.isNotEmpty) {
+      isSubmittingCartItems = true;
+      update();
       final url = Uri.parse(
         "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.update_so_items",
       );
@@ -448,40 +501,46 @@ class VMIController extends GetxController {
       };
 
       try {
-        final response = await http.post(
-          url,
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            'Cookie': AuthService.sessionId!, // 👉 SEND SESSION ID AS COOKIE
-          },
-          body: jsonEncode(body),
-        );
+        final response = await http
+            .post(
+              url,
+              headers: {
+                HttpHeaders.contentTypeHeader: 'application/json',
+                'Cookie':
+                    AuthService.sessionId!, // 👉 SEND SESSION ID AS COOKIE
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 30));
 
         if (response.statusCode == 200) {
+          isSubmittingCartItems = false;
+          update();
           final json = jsonDecode(response.body);
-
           if (json["message"] != null) {
             print("✅ Updated Successfully: ${json['message']}");
-            List<String> emailsToSend = [];
-            for (EmailModel email in user.emails) {
-              emailsToSend.add(email.email);
-            }
-            toastMessage(message: "Items Ordered Success");
-            if (user.customerName != null && soItemList.isNotEmpty) {
-              bool value = await sendBulkEmail(
-                message: buildEmailBody(
-                  user.customerName!,
-                  cartList[0].salesOrder!,
-                  cartList,
-                ),
-                emails: emailsToSend,
-                subject:
-                    "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
-              );
-              if (value) {
-                toastMessage(message: "Email Sent Success");
-              }
-            }
+            orderSuccessMsg(context);
+            // List<String> emailsToSend = [];
+            // for (EmailModel email in user.emails) {
+            //   emailsToSend.add(email.email);
+            // }
+            //
+            // if (user.customerName != null && soItemList.isNotEmpty) {
+            //   bool value = await sendBulkEmail(
+            //     message: buildEmailBody(
+            //       user.customerName!,
+            //       cartList[0].salesOrder!,
+            //       cartList,
+            //     ),
+            //     emails: emailsToSend,
+            //     subject:
+            //         "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
+            //   );
+            //   if (value) {
+            //     toastMessage(message: "Email Sent Success");
+            //
+            //   }
+            // }
             soItemList.clear();
             cartList.clear();
             update();
@@ -496,21 +555,25 @@ class VMIController extends GetxController {
         }
       } catch (e) {
         print("❌ Exception in updateSOItems: $e");
+        isSubmittingCartItems = false;
+        update();
       }
     } else {
+      isSubmittingCartItems = false;
+      update();
       soItemList.clear();
       cartList.clear();
       update();
       await fetchItemsList(user: user);
       update();
     }
+    isSubmittingCartItems = false;
+    update();
   }
 
   Future<bool> updateBinAssignment(
     List<Map<String, dynamic>> binUpdateList,
   ) async {
-    // return false;
-
     if (AuthService.sessionId == null) {
       print("❌ No session session found.");
       return false;
@@ -525,14 +588,16 @@ class VMIController extends GetxController {
     };
 
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Cookie": AuthService.sessionId!,
-        },
-        body: jsonEncode(body),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": AuthService.sessionId!,
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final res = jsonDecode(response.body);
@@ -560,23 +625,60 @@ class VMIController extends GetxController {
     String salesOrder,
     List<SoPriority> items,
   ) {
-    String itemLines = items
-        .map((i) => "- ${i.itemCode} : ${i.qty}")
-        .join("\n");
+    String tableRows = items
+        .map(
+          (i) =>
+              """
+    <tr>
+      <td style="border:1px solid #ccc;padding:8px;">${i.customerPartCode}</td>
+      <td style="border:1px solid #ccc;padding:8px;text-align:right;">${i.customerPartDesc}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.itemCode}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.itemName}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.qty}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.uom}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.rate}</td>
+      <td style="border:1px solid #ccc;padding:8px;">${i.amount}</td>
+    </tr>
+  """,
+        )
+        .join();
 
     return """
-          Dear $customerName,
-          
-          Your order **$salesOrder** has been successfully placed.
-          
-          Items Ordered:
-          $itemLines
-          
-          Thank you for choosing us.
-          
-          Warm regards,
-          MVD Fasteners Pvt Ltd.,
-          """;
+  <html>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+    <p>Dear <strong>$customerName</strong>,</p>
+
+    <p>Your order <strong>$salesOrder</strong> has been successfully placed.</p>
+
+    <p><strong>Items Ordered:</strong></p>
+
+    <table style="border-collapse: collapse; width: 100%;">
+      <thead>
+        <tr>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">Cust Code</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">Cust Desc</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">MVD Code</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">MVD Desc</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:right;">Quantity</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">UOM</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">Price</th>
+          <th style="border:1px solid #ccc;padding:8px;text-align:left;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        $tableRows
+      </tbody>
+    </table>
+
+    <p>Thank you for choosing us.</p>
+
+    <p>
+      Warm regards,<br>
+      <strong>MVD Fasteners Pvt Ltd.</strong>
+    </p>
+  </body>
+  </html>
+  """;
   }
 
   Future<bool> sendBulkEmail({
@@ -592,6 +694,8 @@ class VMIController extends GetxController {
     final url = Uri.parse(
       "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.send_bulk_email",
     );
+
+    List<String> testMails = ["a.jayasuryamct2019@gmail.com"];
 
     final Map<String, dynamic> body = {
       "data": jsonEncode({

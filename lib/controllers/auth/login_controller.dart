@@ -63,13 +63,11 @@ class LoginController extends MyController {
     var url = Uri.parse("$baseUrl/api/method/login");
 
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {"Content-Type": "application/json"},
-            body: {"username": email, "pwd": password},
-          )
-          .timeout(Duration(seconds: 20));
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"usr": email, "pwd": password}),
+      );
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         print("body$body");

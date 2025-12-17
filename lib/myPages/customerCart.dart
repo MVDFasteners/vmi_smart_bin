@@ -68,19 +68,27 @@ class CustomerCartView extends StatelessWidget {
                           if (controller.cartList.isEmpty) {
                             toastMessage(message: "Cart is Empty");
                           } else {
-                            await controller.updateSOItems(user);
+                            await controller.updateSOItems(user, context);
                           }
                         },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              "Submit",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            controller.isSubmittingCartItems
+                                ? SizedBox(
+                                    height: 25,
+                                    width: 25,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    "Submit",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ],
                         ),
                       ),
@@ -92,7 +100,7 @@ class CustomerCartView extends StatelessWidget {
             appBar: AppBar(
               backgroundColor: const Color(0xFF57C3FF),
               title: Text(
-                "Selected Items",
+                " Selected Items",
                 style: TextStyle(color: Colors.white),
               ),
               actions: [
@@ -128,7 +136,7 @@ class CustomerCartView extends StatelessWidget {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(12),
-                      itemCount: vmiController.cartList.length,
+                      itemCount: controller.cartList.length,
                       itemBuilder: (context, index) {
                         final item =
                             controller.cartList[index]; // your model data
