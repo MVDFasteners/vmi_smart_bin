@@ -18,13 +18,14 @@ void toastMessage({String message = ""}) {
   );
 }
 
-
 void orderSuccessMsg(BuildContext context) {
   final fToast = FToast();
   fToast.init(context);
 
-  // 📱 Phone-only check
-  final bool isPhone = MediaQuery.of(context).size.width < 600;
+  final bool isPhone = MediaQuery
+      .of(context)
+      .size
+      .width < 600;
   if (!isPhone) return;
 
   Widget toast = Container(
@@ -33,11 +34,7 @@ void orderSuccessMsg(BuildContext context) {
       color: Colors.green.shade700,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
-        BoxShadow(
-          color: Colors.black26,
-          blurRadius: 10,
-          offset: Offset(0, 4),
-        )
+        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
       ],
     ),
     child: Row(
@@ -49,7 +46,7 @@ void orderSuccessMsg(BuildContext context) {
           "ORDERED SUCCESS",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 26,          // 🔥 BIG text
+            fontSize: 26, // 🔥 BIG text
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
           ),
@@ -117,7 +114,8 @@ List<String> completedDateListPerMonth() {
   for (int day = 1; day <= date; day++) {
     // ✅ Always use 2-digit month and day
     String formattedDate =
-        "${year.toString()}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+        "${year.toString()}-${month.toString().padLeft(2, '0')}-${day.toString()
+        .padLeft(2, '0')}";
     completedDates.add(formattedDate);
   }
 
