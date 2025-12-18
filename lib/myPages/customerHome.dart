@@ -5,6 +5,7 @@ import 'package:flatten/controllers/auth/login_controller.dart';
 import 'package:flatten/controllers/mycontroller/vmi_controller.dart';
 import 'package:flatten/models/bin_details.dart';
 import 'package:flatten/models/user.dart';
+import 'package:flatten/models/vmi_items.dart';
 import 'package:flatten/myPages/customerCart.dart';
 import 'package:flatten/myPages/login_new_screen.dart';
 import 'package:flatten/myPages/report_view.dart';
@@ -130,7 +131,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: GestureDetector(
         onTap: () async {
-          List<BinDetails>? value = await Navigator.push(
+          List<VmiItems>? value = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => QRScannerScreen(controller: vmiController),
@@ -224,7 +225,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                               controller.selectAll = true;
                             }
                             // controller.update();
-                            controller.onSelectAll(controller.soItemList, v!);
+                            controller.onSelectAll(controller.vmiItems, v!);
                           },
                         ),
                         Expanded(
@@ -291,7 +292,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: controller.soItemList.isEmpty
+                          child: controller.vmiItems.isEmpty
                               ? Center(
                                   child: Text(
                                     "No Data",
@@ -300,14 +301,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                 )
                               : ListView.builder(
                                   padding: const EdgeInsets.all(12),
-                                  itemCount: controller.soItemList.length,
+                                  itemCount: controller.vmiItems.length,
                                   itemBuilder: (context, index) {
-                                    final item = controller.soItemList[index];
+                                    final item = controller.vmiItems[index];
                                     final isSelected = controller.cartList.any(
                                       (cartItem) =>
-                                          cartItem.itemCode == item.itemCode &&
-                                          cartItem.salesOrder ==
-                                              item.salesOrder,
+                                          cartItem.itemCode == item.itemCode,
                                     );
 
                                     // final isSelected = controller.cartList.any(
@@ -391,14 +390,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                                       ),
                                                     ),
                                                     Text(
-                                                      "SO: ${item.salesOrder}",
-                                                      style: const TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      "Due Date: ${item.deliveryDate}",
+                                                      "PO No: ${item.poNumber}",
                                                       style: const TextStyle(
                                                         fontSize: 13,
                                                         color: Colors.black54,
@@ -412,37 +404,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                                     CrossAxisAlignment.end,
                                                 children: [
                                                   Text(
-                                                    item.status == "MAKE READY"
-                                                        ? "ORDERED"
-                                                        : item.status ==
-                                                              "PREPARATION STARTED"
-                                                        ? "PROCESSING"
-                                                        : "NEW",
-                                                    style: const TextStyle(
-                                                      fontSize: 12.5,
-                                                      color: Colors.black54,
-                                                    ),
-                                                  ),
-                                                  if (item.status !=
-                                                      "NOT YET USED")
-                                                    const SizedBox(height: 4),
-                                                  if (item.status !=
-                                                      "NOT YET USED")
-                                                    Text(
-                                                      item.status ==
-                                                              "MAKE READY"
-                                                          ? item.makeReadyDate ??
-                                                                "--"
-                                                          : item.preparationDate ??
-                                                                "--",
-                                                      style: const TextStyle(
-                                                        fontSize: 12.5,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    item.totalBins ?? "1",
+                                                    (item.totalBins ?? 1)
+                                                        .toString(),
                                                     style: const TextStyle(
                                                       fontSize: 17,
                                                       color: Colors.black54,
@@ -450,11 +413,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
-                                                    item.clearedBins == "" ||
-                                                            item.clearedBins ==
-                                                                null
+                                                    item.clearedBins == null
                                                         ? "0"
-                                                        : item.clearedBins!,
+                                                        : item.clearedBins!
+                                                              .toString(),
                                                     style: const TextStyle(
                                                       fontSize: 17,
                                                       color: Colors.black54,
@@ -614,10 +576,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                     return;
                   }
 
-                  List<BinDetails>? binDetailList = await widget.controller
-                      .fetchBinDetails(binNo: binValue);
+                  VmiItems? item;
 
-                  Navigator.pop(context, binDetailList); // 🔥 SAFE NOW
+                  try {
+                    item = widget.controller.vmiItems.firstWhere(
+                      (e) => e.itemCode == binValue,
+                    );
+                  } catch (e) {
+                    item = null;
+                  }
+
+                  Navigator.pop(context, item);
                   return;
                 }
               }

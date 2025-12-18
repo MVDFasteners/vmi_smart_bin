@@ -5,6 +5,7 @@ import 'package:flatten/helpers/services/auth_service.dart';
 import 'package:flatten/models/bin_details.dart';
 import 'package:flatten/models/report_list.dart';
 import 'package:flatten/models/user.dart';
+import 'package:flatten/models/vmi_items.dart';
 import 'package:flutter/material.dart';
 import 'package:flatten/app_constant.dart';
 import 'package:flatten/models/sales_order_items.dart';
@@ -15,8 +16,11 @@ import 'package:intl/intl.dart';
 class VMIController extends GetxController {
   List<SoPriority> soItemList = [];
   List<BinDetails> binDetails = [];
-  List<SoPriority> cartList = [];
+  List<VmiItems> cartList = [];
   List<ReportListModel> reportList = [];
+
+  List<VmiItems> vmiItems = [];
+
   bool selectAll = false;
   bool isSubmittingCartItems = false;
   bool reportLoading = false;
@@ -83,33 +87,31 @@ class VMIController extends GetxController {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
-  void onSelectAll(List<SoPriority> soItemList, bool value) {
+  void onSelectAll(List<VmiItems> vmiItemsList, bool value) {
     if (value) {
-      for (SoPriority item in soItemList) {
+      for (VmiItems item in vmiItemsList) {
         final exists = cartList.any(
           (cartItem) =>
               cartItem.itemCode == item.itemCode &&
-              cartItem.salesOrder == item.salesOrder,
+              cartItem.poNumber == item.poNumber,
         );
         if (!exists) {
-          if (item.status == "NOT YET USED") {
-            cartList.add(item);
-          }
+          cartList.add(item);
         }
         update();
       }
     } else {
-      for (SoPriority item in soItemList) {
+      for (VmiItems item in vmiItemsList) {
         final exists = cartList.any(
           (cartItem) =>
               cartItem.itemCode == item.itemCode &&
-              cartItem.salesOrder == item.salesOrder,
+              cartItem.poNumber == item.poNumber,
         );
         if (exists) {
           cartList.removeWhere(
             (cartItem) =>
                 cartItem.itemCode == item.itemCode &&
-                cartItem.salesOrder == item.salesOrder,
+                cartItem.poNumber == item.poNumber,
           );
         }
         update();
@@ -117,22 +119,20 @@ class VMIController extends GetxController {
     }
   }
 
-  void onAddCart(SoPriority item) {
+  void onAddCart(VmiItems item) {
     final exists = cartList.any(
       (cartItem) =>
           cartItem.itemCode == item.itemCode &&
-          cartItem.salesOrder == item.salesOrder,
+          cartItem.poNumber == item.poNumber,
     );
 
     if (!exists) {
-      if (item.status == "NOT YET USED") {
-        cartList.add(item);
-      }
+      cartList.add(item);
     } else {
       cartList.removeWhere(
         (cartItem) =>
             cartItem.itemCode == item.itemCode &&
-            cartItem.salesOrder == item.salesOrder,
+            cartItem.poNumber == item.poNumber,
       );
     }
     update();
@@ -191,56 +191,6 @@ class VMIController extends GetxController {
     });
   }
 
-  Future<Uint8List?> fetchInvoicePdf({required String invoiceId}) async {
-    if (AuthService.sessionId == null) {
-      print("❌ No session found. Please login first.");
-      return null;
-    }
-
-    // Ensure this URL is correct for your custom method path
-    final apiUrl =
-        "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_sales_invoice_pdf";
-
-    try {
-      final uri = Uri.parse(apiUrl);
-
-      final response = await http.post(
-        uri,
-        headers: {
-          // Frappe accepts JSON body for POST requests
-          HttpHeaders.contentTypeHeader: 'application/json',
-          // Send the session cookie for authentication
-          'Cookie': AuthService.sessionId ?? '',
-        },
-        body: jsonEncode({
-          // CRITICAL: The parameter name MUST match the Python function argument
-          "sales_invoice_id": invoiceId,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        // SUCCESS: The server is sending the raw PDF binary data in the body.
-        print("✅ Successfully fetched PDF binary data.");
-        return response.bodyBytes;
-      } else {
-        // Handle server-side errors (like "not found" or internal errors)
-        String errorBody = response.body;
-        try {
-          // Attempt to extract the friendly error message from the JSON response
-          final jsonError = jsonDecode(response.body);
-          errorBody = jsonError["_server_messages"] ?? response.body;
-        } catch (_) {
-          // If not JSON, use raw body
-        }
-        print("❌ Error ${response.statusCode}: $errorBody");
-        return null;
-      }
-    } catch (e) {
-      print("⚠️ Network or general error fetching invoice PDF: $e");
-      return null;
-    }
-  }
-
   Future<void> fetchItemsList({
     String? itemCode,
     String? customerCode,
@@ -255,9 +205,9 @@ class VMIController extends GetxController {
     String? company = user.company;
 
     if (customer != null && company != null) {
-      soItemList = [];
+      vmiItems = [];
       final apiUrl =
-          "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_so_priority";
+          "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.get_vmi_items";
       try {
         final uri = Uri.parse(apiUrl).replace(
           queryParameters: {
@@ -279,8 +229,9 @@ class VMIController extends GetxController {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final List<dynamic> list = data['message'] ?? [];
-          soItemList = list.map((e) => SoPriority.fromJson(e)).toList();
+          vmiItems = list.map((e) => VmiItems.fromJson(e)).toList();
           update();
+
           print("✅ SO Priority items fetched successfully");
         } else {
           print("❌ Error ${response.statusCode}: ${response.body}");
@@ -378,57 +329,7 @@ class VMIController extends GetxController {
     // update();
   }
 
-  Future<List<BinDetails>?> fetchBinDetails({
-    String? binNo,
-    String? itemCode,
-    String? customerCode,
-  }) async {
-    binDetails = [];
-    if (AuthService.sessionId == null) {
-      print("❌ No session found. Please login first.");
-      return null;
-    }
-
-    final apiUrl =
-        "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_bin_items";
-    try {
-      final uri = Uri.parse(apiUrl).replace(
-        queryParameters: {
-          if (binNo != null) 'bin_no': binNo,
-          if (itemCode != null) 'item_code': itemCode,
-          if (customerCode != null) 'customer_part_code': customerCode,
-        },
-      );
-
-      final response = await http.get(
-        uri,
-        headers: {
-          HttpHeaders.contentTypeHeader: 'application/json',
-          'Cookie': AuthService.sessionId ?? '',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> list = data['message'] ?? [];
-        binDetails = list.map((e) => BinDetails.fromJson(e)).toList();
-        update();
-        print("✅fetched successfully");
-        return binDetails;
-      } else {
-        print("❌ Error ${response.statusCode}: ${response.body}");
-      }
-    } catch (e) {
-      print("⚠️ Error fetching : $e");
-    }
-  }
-
-  Future<void> updateSOItems(UserModel user, BuildContext context) async {
-    isSubmittingCartItems = true;
-    update();
-    List<SoPriority> readyToOrder = [];
-    List<SoPriority> binUpdateList = [];
-
+  Future<void> createNewSO(UserModel user) async {
     if (AuthService.sessionId == null) {
       print("❌ No session found. Please login first.");
       isSubmittingCartItems = false;
@@ -436,140 +337,215 @@ class VMIController extends GetxController {
       return;
     }
 
-    for (SoPriority item in cartList) {
-      item.deliveryDate = fixDateIfAfterToday(item.deliveryDate);
-      item.makeReadyDate = fixDateIfAfterToday(item.makeReadyDate);
-      item.status = "MAKE READY";
+    List<VmiItems> readyToOrder = [];
+    List<VmiItems> updateOnlyVmi = [];
 
+    for (VmiItems item in cartList) {
       if (item.isBulkSubmit == 1) {
         readyToOrder.add(item);
       } else {
-        int totalBins = int.parse(
-          item.totalBins == "" || item.totalBins == null
-              ? "1"
-              : item.totalBins!,
-        );
-        int clearedBins =
-            int.parse(
-              item.clearedBins == "" || item.clearedBins == null
-                  ? "0"
-                  : item.clearedBins!,
-            ) +
-            1;
-
+        int totalBins = item.totalBins == null ? 1 : item.totalBins!;
+        int clearedBins = item.clearedBins == null ? 0 : item.clearedBins! + 1;
         if (totalBins <= clearedBins) {
           readyToOrder.add(item);
         } else {
-          item.clearedBins = clearedBins.toString();
-          binUpdateList.add(item);
+          item.clearedBins = clearedBins;
+          updateOnlyVmi.add(item);
         }
-
         print(readyToOrder);
       }
     }
 
-    if (binUpdateList.isNotEmpty) {
-      List<Map<String, dynamic>> toUpdateBins = binUpdateList
-          .map((e) => e.binUpdateToJson(int.parse(e.clearedBins!)))
-          .toList();
-
-      await updateBinAssignment(toUpdateBins);
-      isSubmittingCartItems = false;
-      update();
-    }
-
-    List<Map<String, dynamic>> clearSubmittedBins = readyToOrder
-        .map((e) => e.binUpdateToJson(0))
-        .toList();
-
-    await updateBinAssignment(clearSubmittedBins);
-    isSubmittingCartItems = false;
-    update();
-
     if (readyToOrder.isNotEmpty) {
-      isSubmittingCartItems = true;
-      update();
-      final url = Uri.parse(
-        "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.update_so_items",
+      String? value = await createSalesOrder(
+        user: user,
+        orderItems: readyToOrder,
       );
 
-      final Map<String, dynamic> body = {
-        "data": {
-          "sales_order": readyToOrder.first.salesOrder,
-          "items": readyToOrder.map((e) => e.toJson()).toList(),
-        },
-      };
-
-      try {
-        final response = await http
-            .post(
-              url,
-              headers: {
-                HttpHeaders.contentTypeHeader: 'application/json',
-                'Cookie':
-                    AuthService.sessionId!, // 👉 SEND SESSION ID AS COOKIE
-              },
-              body: jsonEncode(body),
-            )
-            .timeout(const Duration(seconds: 30));
-
-        if (response.statusCode == 200) {
-          isSubmittingCartItems = false;
-          update();
-          final json = jsonDecode(response.body);
-          if (json["message"] != null) {
-            print("✅ Updated Successfully: ${json['message']}");
-            orderSuccessMsg(context);
-            // List<String> emailsToSend = [];
-            // for (EmailModel email in user.emails) {
-            //   emailsToSend.add(email.email);
-            // }
-            //
-            // if (user.customerName != null && soItemList.isNotEmpty) {
-            //   bool value = await sendBulkEmail(
-            //     message: buildEmailBody(
-            //       user.customerName!,
-            //       cartList[0].salesOrder!,
-            //       cartList,
-            //     ),
-            //     emails: emailsToSend,
-            //     subject:
-            //         "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
-            //   );
-            //   if (value) {
-            //     toastMessage(message: "Email Sent Success");
-            //
-            //   }
-            // }
-            soItemList.clear();
-            cartList.clear();
-            update();
-            await fetchItemsList(user: user);
-            update();
-          } else {
-            print("⚠️ Unexpected Response: $json");
-          }
-        } else {
-          print("❌ Server Error: ${response.statusCode}");
-          print("Response: ${response.body}");
-        }
-      } catch (e) {
-        print("❌ Exception in updateSOItems: $e");
-        isSubmittingCartItems = false;
-        update();
-      }
-    } else {
-      isSubmittingCartItems = false;
-      update();
-      soItemList.clear();
-      cartList.clear();
-      update();
-      await fetchItemsList(user: user);
-      update();
+      print(value);
     }
-    isSubmittingCartItems = false;
-    update();
   }
+
+  Future<String?> createSalesOrder({
+    required UserModel user,
+    required List<VmiItems> orderItems,
+  }) async {
+    if (AuthService.sessionId == null || cartList.isEmpty) return null;
+
+    final response = await http.post(
+      Uri.parse(
+        "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.create_sales_order",
+      ),
+      headers: {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        'Cookie': AuthService.sessionId!,
+      },
+      body: jsonEncode({
+        "customer": user.customerId,
+        "company": user.company,
+        "po_no": orderItems[0].poNumber,
+        "contact_person": orderItems[0].contactPerson,
+        "selling_price_list": orderItems[0].priceList,
+        "currency": orderItems[0].currency,
+        "cart_items": orderItems
+            .map(
+              (e) => {
+                "item_code": e.itemCode,
+                "qty": e.qty,
+                "uom": e.uom,
+                "rate": e.rate,
+                "customer_part_code": e.customerPartCode,
+                "customer_part_description": e.customerPartDesc,
+              },
+            )
+            .toList(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data["message"]?["sales_order"];
+    }
+
+    return null;
+  }
+
+  // Future<void> updateSOItems(UserModel user, BuildContext context) async {
+  //   isSubmittingCartItems = true;
+  //   update();
+  //   List<VmiItems> readyToOrder = [];
+  //   List<VmiItems> binUpdateList = [];
+  //
+  //   if (AuthService.sessionId == null) {
+  //     print("❌ No session found. Please login first.");
+  //     isSubmittingCartItems = false;
+  //     update();
+  //     return;
+  //   }
+  //
+  //   for (VmiItems item in cartList) {
+  //     // item.deliveryDate = fixDateIfAfterToday(item.deliveryDate);
+  //     // item.makeReadyDate = fixDateIfAfterToday(item.makeReadyDate);
+  //     // item.status = "MAKE READY";
+  //     if (item.isBulkSubmit == 1) {
+  //       readyToOrder.add(item);
+  //     } else {
+  //       int totalBins = item.totalBins == null ? 1 : item.totalBins!;
+  //
+  //       int clearedBins = item.clearedBins == null ? 0 : item.clearedBins! + 1;
+  //
+  //       if (totalBins <= clearedBins) {
+  //         readyToOrder.add(item);
+  //       } else {
+  //         item.clearedBins = clearedBins;
+  //         binUpdateList.add(item);
+  //       }
+  //       print(readyToOrder);
+  //     }
+  //   }
+  //
+  //   if (binUpdateList.isNotEmpty) {
+  //     List<Map<String, dynamic>> toUpdateBins = binUpdateList
+  //         .map((e) => e.binUpdateToJson(e.clearedBins!))
+  //         .toList();
+  //
+  //     await updateBinAssignment(toUpdateBins);
+  //     isSubmittingCartItems = false;
+  //     update();
+  //   }
+  //
+  //   List<Map<String, dynamic>> clearSubmittedBins = readyToOrder
+  //       .map((e) => e.binUpdateToJson(0))
+  //       .toList();
+  //
+  //   await updateBinAssignment(clearSubmittedBins);
+  //   isSubmittingCartItems = false;
+  //   update();
+  //
+  //   if (readyToOrder.isNotEmpty) {
+  //     isSubmittingCartItems = true;
+  //     update();
+  //     final url = Uri.parse(
+  //       "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.update_so_items",
+  //     );
+  //
+  //     final Map<String, dynamic> body = {
+  //       "data": {
+  //         "sales_order": readyToOrder.first.salesOrder,
+  //         "items": readyToOrder.map((e) => e.toJson()).toList(),
+  //       },
+  //     };
+  //
+  //     try {
+  //       final response = await http
+  //           .post(
+  //             url,
+  //             headers: {
+  //               HttpHeaders.contentTypeHeader: 'application/json',
+  //               'Cookie':
+  //                   AuthService.sessionId!, // 👉 SEND SESSION ID AS COOKIE
+  //             },
+  //             body: jsonEncode(body),
+  //           )
+  //           .timeout(const Duration(seconds: 30));
+  //
+  //       if (response.statusCode == 200) {
+  //         isSubmittingCartItems = false;
+  //         update();
+  //         final json = jsonDecode(response.body);
+  //         if (json["message"] != null) {
+  //           print("✅ Updated Successfully: ${json['message']}");
+  //           orderSuccessMsg(context);
+  //           // List<String> emailsToSend = [];
+  //           // for (EmailModel email in user.emails) {
+  //           //   emailsToSend.add(email.email);
+  //           // }
+  //           //
+  //           // if (user.customerName != null && soItemList.isNotEmpty) {
+  //           //   bool value = await sendBulkEmail(
+  //           //     message: buildEmailBody(
+  //           //       user.customerName!,
+  //           //       cartList[0].salesOrder!,
+  //           //       cartList,
+  //           //     ),
+  //           //     emails: emailsToSend,
+  //           //     subject:
+  //           //         "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
+  //           //   );
+  //           //   if (value) {
+  //           //     toastMessage(message: "Email Sent Success");
+  //           //
+  //           //   }
+  //           // }
+  //           soItemList.clear();
+  //           cartList.clear();
+  //           update();
+  //           await fetchItemsList(user: user);
+  //           update();
+  //         } else {
+  //           print("⚠️ Unexpected Response: $json");
+  //         }
+  //       } else {
+  //         print("❌ Server Error: ${response.statusCode}");
+  //         print("Response: ${response.body}");
+  //       }
+  //     } catch (e) {
+  //       print("❌ Exception in updateSOItems: $e");
+  //       isSubmittingCartItems = false;
+  //       update();
+  //     }
+  //   } else {
+  //     isSubmittingCartItems = false;
+  //     update();
+  //     soItemList.clear();
+  //     cartList.clear();
+  //     update();
+  //     await fetchItemsList(user: user);
+  //     update();
+  //   }
+  //   isSubmittingCartItems = false;
+  //   update();
+  // }
 
   Future<bool> updateBinAssignment(
     List<Map<String, dynamic>> binUpdateList,

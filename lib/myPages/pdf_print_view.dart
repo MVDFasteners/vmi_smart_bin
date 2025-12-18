@@ -1,4 +1,5 @@
 import 'package:flatten/models/sales_order_items.dart';
+import 'package:flatten/models/vmi_items.dart';
 import 'package:pdf/pdf.dart'; // <-- required for PageFormat.a4
 import 'package:pdf/widgets.dart' as pw;
 
@@ -6,7 +7,7 @@ class PdfPrintView {
   Future<pw.Document> generateInvoicePdf({
     required String companyName,
     required String poNumber,
-    required List<SoPriority> items,
+    required List<VmiItems> items,
   }) async {
     final pdf = pw.Document();
 

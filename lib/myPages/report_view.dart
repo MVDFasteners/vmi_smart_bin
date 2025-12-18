@@ -459,171 +459,171 @@ class _ReportViewScreenState extends State<ReportViewScreen>
     );
   }
 }
-
-class QRScannerScreen extends StatefulWidget {
-  final VMIController controller;
-
-  const QRScannerScreen({super.key, required this.controller});
-
-  @override
-  State<QRScannerScreen> createState() => _QRScannerScreenState();
-}
-
-class _QRScannerScreenState extends State<QRScannerScreen> {
-  final MobileScannerController controller = MobileScannerController();
-  bool _isProcessing = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () async {
-            await controller.stop();
-            if (mounted) Navigator.pop(context);
-          },
-        ),
-        title: const Text("Scan QR Code"),
-      ),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: controller,
-            onDetect: (capture) async {
-              if (_isProcessing) return;
-              _isProcessing = true;
-
-              controller.stop();
-
-              var code = capture.barcodes.first.rawValue;
-
-              if (code != null) {
-                final regex = RegExp(r'BIN:\s*(.+)');
-                final match = regex.firstMatch(code);
-
-                if (match != null) {
-                  String binValue = match.group(1)!.trim();
-
-                  if (binValue.isEmpty) {
-                    toastMessage(message: "NO Bin Value Found");
-                    Navigator.pop(context);
-                    return;
-                  }
-
-                  List<BinDetails>? binDetailList = await widget.controller
-                      .fetchBinDetails(binNo: binValue);
-
-                  Navigator.pop(context, binDetailList); // 🔥 SAFE NOW
-                  return;
-                }
-              }
-
-              _isProcessing = false;
-            },
-          ),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFF006784).withOpacity(0.5),
-                width: 2,
-              ),
-            ),
-            child: Center(
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF006784), width: 3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
-          // instruction pill
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 40),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Text(
-                "Position QR code within the frame",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    controller.stop();
-    controller.dispose();
-    super.dispose();
-  }
-}
-
-// *********************************************************************
-//                      FULL BIN MODULE PLACEHOLDER
-// *********************************************************************
-
-class FullBinModuleScreen extends StatelessWidget {
-  const FullBinModuleScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF006784),
-        elevation: 0,
-        title: const Text(
-          "Full Bin Module",
-          style: TextStyle(
-            color: Color(0xFF006784),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.view_module_rounded,
-              size: 72,
-              color: Color(0xFF006784),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Full Bin workflow goes here",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Back"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//
+// class QRScannerScreen extends StatefulWidget {
+//   final VMIController controller;
+//
+//   const QRScannerScreen({super.key, required this.controller});
+//
+//   @override
+//   State<QRScannerScreen> createState() => _QRScannerScreenState();
+// }
+//
+// class _QRScannerScreenState extends State<QRScannerScreen> {
+//   final MobileScannerController controller = MobileScannerController();
+//   bool _isProcessing = false;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.black,
+//       appBar: AppBar(
+//         backgroundColor: Colors.black,
+//         foregroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back_ios_new),
+//           onPressed: () async {
+//             await controller.stop();
+//             if (mounted) Navigator.pop(context);
+//           },
+//         ),
+//         title: const Text("Scan QR Code"),
+//       ),
+//       body: Stack(
+//         children: [
+//           MobileScanner(
+//             controller: controller,
+//             onDetect: (capture) async {
+//               if (_isProcessing) return;
+//               _isProcessing = true;
+//
+//               controller.stop();
+//
+//               var code = capture.barcodes.first.rawValue;
+//
+//               if (code != null) {
+//                 final regex = RegExp(r'BIN:\s*(.+)');
+//                 final match = regex.firstMatch(code);
+//
+//                 if (match != null) {
+//                   String binValue = match.group(1)!.trim();
+//
+//                   if (binValue.isEmpty) {
+//                     toastMessage(message: "NO Bin Value Found");
+//                     Navigator.pop(context);
+//                     return;
+//                   }
+//
+//                   List<BinDetails>? binDetailList = await widget.controller
+//                       .fetchBinDetails(binNo: binValue);
+//
+//                   Navigator.pop(context, binDetailList); // 🔥 SAFE NOW
+//                   return;
+//                 }
+//               }
+//
+//               _isProcessing = false;
+//             },
+//           ),
+//           Container(
+//             decoration: BoxDecoration(
+//               border: Border.all(
+//                 color: const Color(0xFF006784).withOpacity(0.5),
+//                 width: 2,
+//               ),
+//             ),
+//             child: Center(
+//               child: Container(
+//                 width: 250,
+//                 height: 250,
+//                 decoration: BoxDecoration(
+//                   border: Border.all(color: const Color(0xFF006784), width: 3),
+//                   borderRadius: BorderRadius.circular(20),
+//                 ),
+//               ),
+//             ),
+//           ),
+//           // instruction pill
+//           Positioned(
+//             bottom: 60,
+//             left: 0,
+//             right: 0,
+//             child: Container(
+//               margin: const EdgeInsets.symmetric(horizontal: 40),
+//               padding: const EdgeInsets.all(16),
+//               decoration: BoxDecoration(
+//                 color: Colors.black.withOpacity(0.7),
+//                 borderRadius: BorderRadius.circular(15),
+//               ),
+//               child: const Text(
+//                 "Position QR code within the frame",
+//                 textAlign: TextAlign.center,
+//                 style: TextStyle(
+//                   color: Colors.white,
+//                   fontSize: 16,
+//                   fontWeight: FontWeight.w500,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   @override
+//   void dispose() {
+//     controller.stop();
+//     controller.dispose();
+//     super.dispose();
+//   }
+// }
+//
+// // *********************************************************************
+// //                      FULL BIN MODULE PLACEHOLDER
+// // *********************************************************************
+//
+// class FullBinModuleScreen extends StatelessWidget {
+//   const FullBinModuleScreen({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         backgroundColor: Colors.white,
+//         foregroundColor: const Color(0xFF006784),
+//         elevation: 0,
+//         title: const Text(
+//           "Full Bin Module",
+//           style: TextStyle(
+//             color: Color(0xFF006784),
+//             fontWeight: FontWeight.w700,
+//           ),
+//         ),
+//       ),
+//       body: Center(
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             const Icon(
+//               Icons.view_module_rounded,
+//               size: 72,
+//               color: Color(0xFF006784),
+//             ),
+//             const SizedBox(height: 12),
+//             const Text(
+//               "Full Bin workflow goes here",
+//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+//             ),
+//             const SizedBox(height: 8),
+//             ElevatedButton(
+//               onPressed: () => Navigator.pop(context),
+//               child: const Text("Back"),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

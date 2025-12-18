@@ -2,6 +2,7 @@ import 'package:flatten/app_constant.dart';
 import 'package:flatten/controllers/mycontroller/vmi_controller.dart';
 import 'package:flatten/models/sales_order_items.dart';
 import 'package:flatten/models/user.dart';
+import 'package:flatten/models/vmi_items.dart';
 import 'package:flatten/myPages/pdf_print_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -68,7 +69,7 @@ class CustomerCartView extends StatelessWidget {
                           if (controller.cartList.isEmpty) {
                             toastMessage(message: "Cart is Empty");
                           } else {
-                            await controller.updateSOItems(user, context);
+                            await controller.createNewSO(user);
                           }
                         },
                         child: Row(
@@ -271,11 +272,11 @@ class CustomerCartView extends StatelessWidget {
 
   Future<void> openInvoicePdf({
     required UserModel user,
-    required List<SoPriority> itemList,
+    required List<VmiItems> itemList,
   }) async {
     final pdf = await PdfPrintView().generateInvoicePdf(
       companyName: user.customerName ?? "",
-      poNumber: itemList.isNotEmpty ? itemList[0].customerPo ?? "" : "",
+      poNumber: itemList.isNotEmpty ? itemList[0].poNumber ?? "" : "",
       items: itemList,
     );
 

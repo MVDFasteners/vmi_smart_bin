@@ -108,7 +108,7 @@ class LoginController extends MyController {
     }
 
     final url = Uri.parse(
-      "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_customer_user_details?value=$value",
+      "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.get_customer_user_details?value=$value",
     );
 
     try {
