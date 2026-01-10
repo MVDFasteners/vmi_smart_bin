@@ -39,33 +39,71 @@ class _ReportViewScreenState extends State<ReportViewScreen>
     _onLoad();
   }
 
-  Timer? _debounce;
-
   Future<void> _onLoad() async {
-    vmiController.selectedYear =
-        vmiController.selectedYear ?? (DateTime.now().year).toString();
-    vmiController.selectedMonth =
-        vmiController.selectedMonth ??
-        monthMap.keys.elementAt(DateTime.now().month - 1);
-    await vmiController.fetchDispatchedItemsList(user: widget.user);
-    setState(() {});
+    final DateTime now = DateTime.now();
+
+    final DateTime from = DateTime(now.year, now.month, 1);
+    final DateTime to = DateTime(now.year, now.month, now.day);
+
+    vmiController.selectedRange = DateTimeRange(start: from, end: to);
+
+    vmiController.dateRangeController.text =
+        "${vmiController.displayFmt(from)} → ${vmiController.displayFmt(to)}";
+
+    await vmiController.fetchDispatchedItemsList(
+      user: widget.user,
+      fromDate: _apiFmt(from),
+      toDate: _apiFmt(to),
+      status: "ALL",
+    );
+    vmiController.update();
+  }
+
+  String _apiFmt(DateTime d) {
+    return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Dispatched Items"),
+        title: GetBuilder(
+          init: vmiController,
+          builder: (controller) {
+            return Row(
+              children: [
+                Text("Report"),
+                SizedBox(width: 3),
+                Text(
+                  " / ${vmiController.dateRangeController.text}",
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            );
+          },
+        ),
         backgroundColor: Colors.blue,
         actions: [
           InkWell(
             onTap: () async {
-              await vmiController.fetchDispatchedItemsList(user: widget.user);
+              await _onLoad();
             },
             child: Padding(
               padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.refresh, color: Color(0xFF006784)),
+              child: Icon(Icons.refresh, color: Colors.white),
             ),
+          ),
+          GetBuilder(
+            init: vmiController,
+            builder: (controller) {
+              return InkWell(
+                onTap: () => _openFilterSheet(context, controller),
+                child: Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Icon(Icons.filter_alt_sharp, color: Colors.white),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -87,95 +125,6 @@ class _ReportViewScreenState extends State<ReportViewScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      _popUpMenuBuilderForYearlySummary(
-                        controller,
-                        widget.user,
-                      ),
-                      const SizedBox(width: 4),
-                      _popUpMenuBuilderForMonthlySummary(
-                        controller,
-                        widget.user,
-                      ),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 10,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.shade400,
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.search,
-                                size: 20,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: controller.searchController,
-                                  onChanged: (value) async {
-                                    if (_debounce?.isActive ?? false) {
-                                      _debounce!.cancel();
-                                    }
-                                    _debounce = Timer(
-                                      const Duration(milliseconds: 800),
-                                      () async {
-                                        await controller.onSearchReportItems(
-                                          value,
-                                          user: widget.user,
-                                        );
-                                      },
-                                    );
-                                  },
-                                  textInputAction: TextInputAction.search,
-                                  onFieldSubmitted: (v) async {
-                                    await controller.onSearchReportItems(
-                                      v,
-                                      user: widget.user,
-                                    );
-                                  },
-                                  decoration: InputDecoration(
-                                    hintText: 'Search item code, name...',
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    suffixIcon:
-                                        controller.searchController.text.isEmpty
-                                        ? null
-                                        : IconButton(
-                                            icon: const Icon(
-                                              Icons.clear,
-                                              size: 20,
-                                            ),
-                                            onPressed: () async {
-                                              await controller
-                                                  .clearSearchReport(
-                                                    widget.user,
-                                                  );
-                                            },
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                   Expanded(
                     child: controller.reportList.isEmpty
                         ? Center(
@@ -189,27 +138,48 @@ class _ReportViewScreenState extends State<ReportViewScreen>
                             itemCount: controller.reportList.length,
                             itemBuilder: (context, index) {
                               final item = controller.reportList[index];
-                              String previousData = "";
-                              String currentData = "";
+                              String previousSO = "";
+                              String currentSO = "";
+                              double orderedQty = item.qty ?? 0;
+                              double deliveredQty = item.deliveredQty ?? 0;
+                              String status = "PENDING";
+
+                              if (orderedQty <= deliveredQty) {
+                                status = "DELIVERED";
+                              }
 
                               if (index != 0) {
-                                previousData =
+                                previousSO =
                                     controller
                                         .reportList[index - 1]
-                                        .dispatchedDate ??
+                                        .salesOrder ??
                                     "";
-                                currentData = item.dispatchedDate ?? "";
+                                currentSO = item.salesOrder ?? "";
                               }
 
                               return Column(
                                 children: [
-                                  if (index == 0 || currentData != previousData)
-                                    Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Text(
-                                        item.dispatchedDate ?? "--",
-                                        style: TextStyle(fontSize: 18),
-                                      ),
+                                  if (index == 0 || currentSO != previousSO)
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Text(
+                                            item.salesOrder ?? "--",
+                                            style: TextStyle(fontSize: 18),
+                                          ),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Text(
+                                            item.soDate ?? "--",
+                                            style: TextStyle(fontSize: 18),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   Container(
                                     margin: EdgeInsets.only(bottom: 12),
@@ -247,7 +217,7 @@ class _ReportViewScreenState extends State<ReportViewScreen>
                                               ),
                                             ),
                                             Text(
-                                              item.dispatchedDate ?? "--",
+                                              status,
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
@@ -272,74 +242,19 @@ class _ReportViewScreenState extends State<ReportViewScreen>
                                         ),
                                         SizedBox(height: 8),
                                         Text(
-                                          "QTY: ${item.qty}",
+                                          "QTY: ${(item.qty ?? 0)}  ${item.uom}",
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-
                                         SizedBox(height: 4),
-
                                         Text(
-                                          "SO No: ${item.salesOrder}",
+                                          "Delivered Qty: ${(item.deliveredQty ?? 0)} ${item.uom}",
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: Colors.black54,
                                           ),
-                                        ),
-
-                                        Divider(height: 20, thickness: 1),
-
-                                        // ORDERED / PREPARED / DISPATCHED
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: const [
-                                                Text(
-                                                  "Ordered :",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  "Prepared :",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  "Dispatched :",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  item.makeReadyDate ?? "--",
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  item.preparationDate ?? "--",
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  item.dispatchedDate ?? "--",
-                                                ),
-                                              ],
-                                            ),
-                                          ],
                                         ),
                                       ],
                                     ),
@@ -358,44 +273,142 @@ class _ReportViewScreenState extends State<ReportViewScreen>
     );
   }
 
-  Widget _popUpMenuBuilderForMonthlySummary(
-    VMIController controller,
-    UserModel user,
-  ) {
-    String currentMonthName = monthMap.keys.elementAt(DateTime.now().month - 1);
-    controller.selectedMonth ??= currentMonthName;
-    return PopupMenuButton<String>(
-      onSelected: (value) async {
-        await controller.onSelectMonth(value, user);
-      },
-      itemBuilder: (BuildContext context) {
-        return monthMap.keys.map((month) {
-          return PopupMenuItem<String>(
-            value: month,
-            height: 36,
-            child: MyText.bodySmall(
-              month,
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: 600,
+  void _openFilterSheet(BuildContext context, VMIController controller) {
+    showModalBottomSheet(
+      useSafeArea: true,
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// 🔹 Title
+                const Center(
+                  child: Text(
+                    "Filter Dispatched Items",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _dateRangeField(context, controller),
+                _textField("Sales Order", controller.soSearchCtrl),
+                const SizedBox(height: 12),
+                _textField("Item Code", controller.itemSearchCtrl),
+                _textField("Item Description", controller.itemDescSearchCtrl),
+                const SizedBox(height: 20),
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    canvasColor: Colors.white, // ⭐ dropdown list background
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: controller.selectedStatus,
+                    decoration: const InputDecoration(
+                      labelText: "Status",
+                      border: OutlineInputBorder(),
+                    ),
+                    items: controller.statusList
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(
+                              e,
+                              style: const TextStyle(color: Colors.black),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => controller.selectedStatus = v!,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          controller.dateRangeController.clear();
+                          controller.selectedRange = null;
+                          controller.soSearchCtrl.clear();
+                          controller.itemSearchCtrl.clear();
+                          controller.itemDescSearchCtrl.clear();
+                          controller.selectedStatus = "ALL";
+                          await _onLoad();
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Clear"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await controller.applyFilters(widget.user);
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Apply"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _textField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _dateRangeField(BuildContext context, VMIController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller.dateRangeController,
+        readOnly: true,
+        onTap: () async {
+          DateTimeRange? picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2100),
+            initialDateRange: controller.selectedRange,
+            helpText: "Select Date Range",
           );
-        }).toList();
-      },
-      color: theme.cardTheme.color,
-      child: Container(
-        decoration: boxStyle(),
-        padding: MySpacing.xy(12, 4),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            MyText.labelMedium(
-              controller.selectedMonth ?? monthMap.keys.first,
-              // color: contentTheme.onBackground,
-            ),
-            MySpacing.width(4),
-            Icon(Icons.arrow_drop_down, size: 30),
-          ],
+
+          if (picked != null) {
+            controller.selectedRange = picked;
+            controller.dateRangeController.text =
+                "${controller.fmt(picked.start)}  →  ${controller.fmt(picked.end)}";
+          }
+        },
+        decoration: const InputDecoration(
+          labelText: "From Date - To Date",
+          border: OutlineInputBorder(),
+          suffixIcon: Icon(Icons.date_range),
         ),
       ),
     );
@@ -408,222 +421,4 @@ class _ReportViewScreenState extends State<ReportViewScreen>
       border: Border.all(color: Colors.grey.shade300),
     );
   }
-
-  Widget _popUpMenuBuilderForYearlySummary(
-    VMIController controller,
-    UserModel user,
-  ) {
-    final currentYear = DateTime.now().year;
-    final startYear = 2024;
-
-    final List<String> yearList = [
-      for (int y = startYear; y <= currentYear; y++) "$y",
-    ];
-
-    controller.selectedYear ??= currentYear.toString();
-
-    return PopupMenuButton<String>(
-      onSelected: (value) async {
-        await controller.onSelectYear(value, user);
-      },
-      itemBuilder: (BuildContext context) {
-        return yearList.map((yrs) {
-          return PopupMenuItem<String>(
-            value: yrs,
-            height: 32,
-            child: MyText.bodySmall(
-              yrs,
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: 600,
-            ),
-          );
-        }).toList();
-      },
-      color: theme.cardTheme.color,
-      child: Container(
-        decoration: boxStyle(),
-        padding: MySpacing.xy(12, 4),
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            MyText.labelMedium(
-              controller.selectedYear ?? yearList.first,
-              // color: contentTheme.onBackground,
-            ),
-            MySpacing.width(4),
-            Icon(Icons.arrow_drop_down, size: 30),
-          ],
-        ),
-      ),
-    );
-  }
 }
-//
-// class QRScannerScreen extends StatefulWidget {
-//   final VMIController controller;
-//
-//   const QRScannerScreen({super.key, required this.controller});
-//
-//   @override
-//   State<QRScannerScreen> createState() => _QRScannerScreenState();
-// }
-//
-// class _QRScannerScreenState extends State<QRScannerScreen> {
-//   final MobileScannerController controller = MobileScannerController();
-//   bool _isProcessing = false;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.black,
-//       appBar: AppBar(
-//         backgroundColor: Colors.black,
-//         foregroundColor: Colors.white,
-//         elevation: 0,
-//         leading: IconButton(
-//           icon: const Icon(Icons.arrow_back_ios_new),
-//           onPressed: () async {
-//             await controller.stop();
-//             if (mounted) Navigator.pop(context);
-//           },
-//         ),
-//         title: const Text("Scan QR Code"),
-//       ),
-//       body: Stack(
-//         children: [
-//           MobileScanner(
-//             controller: controller,
-//             onDetect: (capture) async {
-//               if (_isProcessing) return;
-//               _isProcessing = true;
-//
-//               controller.stop();
-//
-//               var code = capture.barcodes.first.rawValue;
-//
-//               if (code != null) {
-//                 final regex = RegExp(r'BIN:\s*(.+)');
-//                 final match = regex.firstMatch(code);
-//
-//                 if (match != null) {
-//                   String binValue = match.group(1)!.trim();
-//
-//                   if (binValue.isEmpty) {
-//                     toastMessage(message: "NO Bin Value Found");
-//                     Navigator.pop(context);
-//                     return;
-//                   }
-//
-//                   List<BinDetails>? binDetailList = await widget.controller
-//                       .fetchBinDetails(binNo: binValue);
-//
-//                   Navigator.pop(context, binDetailList); // 🔥 SAFE NOW
-//                   return;
-//                 }
-//               }
-//
-//               _isProcessing = false;
-//             },
-//           ),
-//           Container(
-//             decoration: BoxDecoration(
-//               border: Border.all(
-//                 color: const Color(0xFF006784).withOpacity(0.5),
-//                 width: 2,
-//               ),
-//             ),
-//             child: Center(
-//               child: Container(
-//                 width: 250,
-//                 height: 250,
-//                 decoration: BoxDecoration(
-//                   border: Border.all(color: const Color(0xFF006784), width: 3),
-//                   borderRadius: BorderRadius.circular(20),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           // instruction pill
-//           Positioned(
-//             bottom: 60,
-//             left: 0,
-//             right: 0,
-//             child: Container(
-//               margin: const EdgeInsets.symmetric(horizontal: 40),
-//               padding: const EdgeInsets.all(16),
-//               decoration: BoxDecoration(
-//                 color: Colors.black.withOpacity(0.7),
-//                 borderRadius: BorderRadius.circular(15),
-//               ),
-//               child: const Text(
-//                 "Position QR code within the frame",
-//                 textAlign: TextAlign.center,
-//                 style: TextStyle(
-//                   color: Colors.white,
-//                   fontSize: 16,
-//                   fontWeight: FontWeight.w500,
-//                 ),
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   @override
-//   void dispose() {
-//     controller.stop();
-//     controller.dispose();
-//     super.dispose();
-//   }
-// }
-//
-// // *********************************************************************
-// //                      FULL BIN MODULE PLACEHOLDER
-// // *********************************************************************
-//
-// class FullBinModuleScreen extends StatelessWidget {
-//   const FullBinModuleScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: Colors.white,
-//         foregroundColor: const Color(0xFF006784),
-//         elevation: 0,
-//         title: const Text(
-//           "Full Bin Module",
-//           style: TextStyle(
-//             color: Color(0xFF006784),
-//             fontWeight: FontWeight.w700,
-//           ),
-//         ),
-//       ),
-//       body: Center(
-//         child: Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             const Icon(
-//               Icons.view_module_rounded,
-//               size: 72,
-//               color: Color(0xFF006784),
-//             ),
-//             const SizedBox(height: 12),
-//             const Text(
-//               "Full Bin workflow goes here",
-//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-//             ),
-//             const SizedBox(height: 8),
-//             ElevatedButton(
-//               onPressed: () => Navigator.pop(context),
-//               child: const Text("Back"),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }

@@ -69,7 +69,10 @@ class CustomerCartView extends StatelessWidget {
                           if (controller.cartList.isEmpty) {
                             toastMessage(message: "Cart is Empty");
                           } else {
-                            await controller.createNewSO(user);
+                            await controller.createNewSO(
+                              user,
+                              context: context,
+                            );
                           }
                         },
                         child: Row(

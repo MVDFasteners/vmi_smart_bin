@@ -7,6 +7,7 @@ import 'package:flatten/controllers/my_controller.dart';
 import 'package:flatten/helpers/services/auth_service.dart';
 import 'package:flatten/helpers/widgets/my_form_validator.dart';
 import 'package:flatten/helpers/widgets/my_validators.dart';
+import 'package:flatten/myPages/KOT%20Repo/KOT%20Report.dart';
 import 'package:flatten/myPages/customerHome.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -82,6 +83,12 @@ class LoginController extends MyController {
           await fetchUserByValue(email);
           loading = false;
           update();
+
+          // Navigator.pushReplacement(
+          //   context,
+          //   MaterialPageRoute(builder: (context) => KotStockScreen()),
+          // );
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => CustomerHomeScreen()),

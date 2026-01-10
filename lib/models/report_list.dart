@@ -17,6 +17,8 @@ class ReportListModel {
   final String? deliveryDate;
   final String? customerPo;
   final String? invoiceId;
+  final String? soDate;
+  final double? deliveredQty;
 
   ReportListModel({
     this.company,
@@ -37,6 +39,8 @@ class ReportListModel {
     this.customerPartDesc,
     this.customerPo,
     this.invoiceId,
+    this.soDate,
+    this.deliveredQty,
   });
 
   factory ReportListModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +63,8 @@ class ReportListModel {
       itemName: json['item_name'],
       customerPo: json['customer_po'],
       invoiceId: json['invoice_id'],
+      soDate: json['transaction_date'],
+      deliveredQty: json['delivered_qty'],
     );
   }
 

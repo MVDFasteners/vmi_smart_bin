@@ -22,10 +22,7 @@ void orderSuccessMsg(BuildContext context) {
   final fToast = FToast();
   fToast.init(context);
 
-  final bool isPhone = MediaQuery
-      .of(context)
-      .size
-      .width < 600;
+  final bool isPhone = MediaQuery.of(context).size.width < 600;
   if (!isPhone) return;
 
   Widget toast = Container(
@@ -41,12 +38,12 @@ void orderSuccessMsg(BuildContext context) {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.check_circle, color: Colors.white, size: 40),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Text(
           "ORDERED SUCCESS",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 26, // 🔥 BIG text
+            fontSize: 20, // 🔥 BIG text
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
           ),
@@ -114,8 +111,7 @@ List<String> completedDateListPerMonth() {
   for (int day = 1; day <= date; day++) {
     // ✅ Always use 2-digit month and day
     String formattedDate =
-        "${year.toString()}-${month.toString().padLeft(2, '0')}-${day.toString()
-        .padLeft(2, '0')}";
+        "${year.toString()}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
     completedDates.add(formattedDate);
   }
 
@@ -157,6 +153,13 @@ String timeStringToStringWithAmPM({required String railwayTime}) {
   String formattedTime = DateFormat("hh:mm a").format(parsedTime);
   return formattedTime;
 }
+
+List<Map<String, int>> colorCodeList = [
+  {"Red": 0},
+  {"Green": 1},
+  {"Blue": 2},
+  {"Orange": 3},
+];
 
 class AppConstant {
   static int androidAppVersion = 2;

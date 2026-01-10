@@ -17,10 +17,15 @@ class VmiItems {
   final int? isBulkSubmit;
   final double? binWeight;
   final String? binName;
+  final String? status;
 
   final String? priceList;
   final String? currency;
   final String? contactPerson;
+  final String? lastOrderedDate;
+  final String? lastOrderedTime;
+  final int? validateHrs;
+  String? customerBackUpWarehouse;
 
   VmiItems({
     this.vmiId,
@@ -44,11 +49,17 @@ class VmiItems {
     this.priceList,
     this.contactPerson,
     this.currency,
+    this.status,
+    this.lastOrderedDate,
+    this.lastOrderedTime,
+    this.validateHrs,
+    this.customerBackUpWarehouse
   });
 
   factory VmiItems.fromJson(Map<String, dynamic> json) {
     return VmiItems(
       company: json['company'],
+
       vmiId: json['vmi_id'],
       vmiItemId: json['vmi_item_id'],
       poNumber: json['po_number'],
@@ -69,6 +80,27 @@ class VmiItems {
       priceList: json['price_list'],
       currency: json['currency'],
       contactPerson: json['contact_person'],
+      status: json['status'],
+
+      validateHrs: json['hrs_period_validate_to_stop_order'],
+      lastOrderedDate: json['last_ordered_date'],
+      lastOrderedTime: json['last_ordered_time'],
+      customerBackUpWarehouse: json['custom_back_up_warehouse'],
     );
+  }
+
+  Map<String, dynamic> toJson(
+    int timeSubmit, {
+    String? status,
+    String? date,
+    String? time,
+  }) {
+    return {
+      "vmi_item_id": vmiItemId,
+      "number_of_times_submit": timeSubmit,
+      "status": status,
+      "last_ordered_date": date,
+      "last_ordered_time": time,
+    };
   }
 }

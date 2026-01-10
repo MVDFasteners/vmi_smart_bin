@@ -22,6 +22,7 @@ class SoPriority {
   final String? totalBins;
   String? clearedBins;
   final int? isBulkSubmit;
+  String? customerBackupWarehouse;
 
   SoPriority({
     this.company,
@@ -47,6 +48,7 @@ class SoPriority {
     this.customerBackUpStock,
     this.totalBins,
     this.clearedBins,
+    this.customerBackupWarehouse,
   });
 
   factory SoPriority.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class SoPriority {
       totalBins: json['number_of_bins'],
       clearedBins: json['number_of_times_submit'],
       isBulkSubmit: json['bulk_submit'],
+      customerBackupWarehouse: json['custom_back_up_warehouse'],
     );
   }
 
@@ -85,6 +88,7 @@ class SoPriority {
       'item_code': itemCode,
       'bin_status': status,
       'make_ready_date': makeReadyDate,
+      'custom_back_up_warehouse': customerBackupWarehouse,
       'idx': idx,
     };
   }

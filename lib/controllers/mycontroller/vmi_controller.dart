@@ -33,40 +33,109 @@ class VMIController extends GetxController {
   bool isEmail = true;
 
   final TextEditingController searchController = TextEditingController();
-  TextEditingController dateController = TextEditingController(
+
+  final TextEditingController soSearchCtrl = TextEditingController();
+  final TextEditingController itemSearchCtrl = TextEditingController();
+  final TextEditingController itemDescSearchCtrl = TextEditingController();
+
+  String selectedStatus = "ALL";
+  List<String> statusList = ["ALL", "PENDING", "DISPATCHED"];
+
+  TextEditingController fromDateCtrl = TextEditingController(
     text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
   );
 
-  Future<void> onSelectYear(String value, UserModel user) async {
-    selectedYear = value;
-    Map<String, String> dateFilter = {};
-    if (selectedYear != null && selectedMonth != null) {
-      dateFilter = getMonthDateRange(int.parse(selectedYear!), selectedMonth!);
-      print("From: ${dateFilter['fromDate']}");
-      print("To: ${dateFilter['toDate']}");
+  TextEditingController toDateCtrl = TextEditingController(
+    text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+  );
 
-      await fetchDispatchedItemsList(
-        user: user,
-        fromDate: dateFilter['fromDate'],
-        toDate: dateFilter['toDate'],
-      );
-      // await onSelectStatus();
-    }
-    update();
+  TextEditingController dateRangeController = TextEditingController();
+  DateTimeRange? selectedRange;
+
+  Future<void> clearFilters(UserModel user) async {
+    dateRangeController.clear();
+    selectedRange = null;
+
+    soSearchCtrl.clear();
+    itemSearchCtrl.clear();
+    itemDescSearchCtrl.clear();
+
+    selectedStatus = "ALL";
+
+    await fetchDispatchedItemsList(user: user);
   }
 
-  Future<void> onSelectMonth(String value, UserModel user) async {
-    selectedMonth = value;
-    Map<String, String> dateFilter = {};
-    if (selectedYear != null && selectedMonth != null) {
-      dateFilter = getMonthDateRange(int.parse(selectedYear!), selectedMonth!);
-      print("From: ${dateFilter['fromDate']}");
-      print("To: ${dateFilter['toDate']}");
+  String fmt(DateTime d) {
+    return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+  }
+
+  String displayFmt(DateTime d) {
+    return "${d.day}-${d.month}-${d.year}";
+  }
+
+  bool isReadyToOrder(VmiItems item) {
+    bool makeOrderStatus = false;
+    double validateHrs = (item.validateHrs ?? 0).toDouble();
+    if (item.lastOrderedDate != null && item.lastOrderedTime != null) {
+      double value = getWorkingHours(
+        item.lastOrderedDate,
+        item.lastOrderedTime,
+      );
+
+      if (validateHrs > value) {
+        makeOrderStatus = true;
+      }
     }
+    return makeOrderStatus;
+  }
+
+  double getWorkingHours(String? date, String? time) {
+    if (date == null || time == null || date.isEmpty || time.isEmpty) {
+      return 0.0;
+    }
+    try {
+      final DateTime start = DateTime.parse("$date $time");
+      final DateTime now = DateTime.now();
+
+      final Duration diff = now.difference(start);
+
+      // Convert duration to hours (with decimals)
+      return diff.inMinutes / 60.0;
+    } catch (e) {
+      return 0.0;
+    }
+  }
+
+  Future<void> applyFilters(
+    UserModel user, {
+    String? initFromDate,
+    String? initToDate,
+  }) async {
+    String? fromDate;
+    String? toDate;
+
+    if (selectedRange != null) {
+      fromDate = fmt(selectedRange!.start);
+      toDate = fmt(selectedRange!.end);
+      dateRangeController.text =
+          "${displayFmt(selectedRange!.start)} → ${displayFmt(selectedRange!.end)}";
+    }
+
     await fetchDispatchedItemsList(
       user: user,
-      fromDate: dateFilter['fromDate'],
-      toDate: dateFilter['toDate'],
+      fromDate: fromDate ?? initFromDate,
+      toDate: toDate ?? initToDate,
+      salesOrder: soSearchCtrl.text.trim().isNotEmpty
+          ? soSearchCtrl.text.trim()
+          : null,
+      customerCode: itemSearchCtrl.text.trim().isNotEmpty
+          ? itemSearchCtrl.text.trim()
+          : null,
+
+      customerPartDesc: itemDescSearchCtrl.text.trim().isNotEmpty
+          ? itemDescSearchCtrl.text.trim()
+          : null,
+      status: selectedStatus != "ALL" ? selectedStatus : null,
     );
     update();
   }
@@ -96,7 +165,9 @@ class VMIController extends GetxController {
               cartItem.poNumber == item.poNumber,
         );
         if (!exists) {
-          cartList.add(item);
+          if (!isReadyToOrder(item)) {
+            cartList.add(item);
+          }
         }
         update();
       }
@@ -127,7 +198,9 @@ class VMIController extends GetxController {
     );
 
     if (!exists) {
-      cartList.add(item);
+      if (!isReadyToOrder(item)) {
+        cartList.add(item);
+      }
     } else {
       cartList.removeWhere(
         (cartItem) =>
@@ -143,7 +216,6 @@ class VMIController extends GetxController {
     final todayFormatted =
         "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-    // If null or empty → set today
     if (dateStr == null || dateStr.isEmpty) {
       return todayFormatted;
     }
@@ -185,9 +257,10 @@ class VMIController extends GetxController {
   }
 
   Future<void> onSearchReportItems(String query, {UserModel? user}) async {
-    await Future.delayed(Duration(milliseconds: 400), () async {
+    await Future.delayed(Duration(milliseconds: 300), () async {
       print(query);
       await fetchDispatchedItemsList(customerCode: query, user: user!);
+      update();
     });
   }
 
@@ -203,9 +276,20 @@ class VMIController extends GetxController {
 
     String? customer = user.customerId;
     String? company = user.company;
+    vmiItems = [];
+    if (customer == "" || customer == null) {
+      toastMessage(message: "Customer Not Linked In Customer Master");
+      update();
+      return;
+    }
+
+    if (company == "" || company == null) {
+      toastMessage(message: "User Not Linked With Company");
+      update();
+      return;
+    }
 
     if (customer != null && company != null) {
-      vmiItems = [];
       final apiUrl =
           "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.get_vmi_items";
       try {
@@ -242,100 +326,112 @@ class VMIController extends GetxController {
     }
   }
 
-  void updateLoadingReport(bool value) {
-    reportLoading = value;
-    update();
-  }
-
   Future<void> fetchDispatchedItemsList({
     String? itemCode,
+    String? itemName,
     String? customerCode,
+    String? customerPartDesc,
+    String? salesOrder,
     String? fromDate,
     String? toDate,
+    String? status,
     required UserModel user,
   }) async {
-    // reportLoading = true;
-    // update();
     if (AuthService.sessionId == null) {
       print("❌ No session found. Please login first.");
-      // updateLoadingReport(false);
-      // reportLoading = false;
-      // update();
       return;
     }
 
-    if (fromDate == null || toDate == null) {
-      Map<String, String> dateFilter = {};
-      if (selectedYear != null && selectedMonth != null) {
-        dateFilter = getMonthDateRange(
-          int.parse(selectedYear!),
-          selectedMonth!,
-        );
-        print("From: ${dateFilter['fromDate']}");
-        print("To: ${dateFilter['toDate']}");
-      }
-      fromDate = dateFilter['fromDate'];
-      toDate = dateFilter['toDate'];
+    final String? customer = user.customerId;
+    final String? company = user.company;
+    reportList = [];
+    if (customer == "" || customer == null) {
+      toastMessage(message: "Customer Not Linked");
+      update();
+      return;
     }
 
-    String? customer = user.customerId;
-    String? company = user.company;
-
-    if (customer != null && company != null) {
-      reportList = [];
-      final apiUrl =
-          "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.get_so_dispatched";
-
-      try {
-        final uri = Uri.parse(apiUrl).replace(
-          queryParameters: {
-            'company': company,
-            if (itemCode != null) 'item_code': itemCode,
-            if (customerCode != null) 'customer_part_code': customerCode,
-            if (fromDate != null) 'from_date': fromDate,
-            if (toDate != null) 'to_date': toDate,
-            'customer': customer,
-          },
-        );
-
-        final response = await http.get(
-          uri,
-          headers: {
-            HttpHeaders.contentTypeHeader: 'application/json',
-            'Cookie': AuthService.sessionId ?? '',
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final List<dynamic> list = data['message'] ?? [];
-
-          reportList = list.map((e) => ReportListModel.fromJson(e)).toList();
-          // reportLoading = false;
-          // update();
-          print("✅ Dispatched items loaded successfully");
-        } else {
-          // reportLoading = false;
-          // update();
-          print("❌ Error ${response.statusCode}: ${response.body}");
-        }
-      } catch (e) {
-        // reportLoading = false;
-        // update();
-        print("⚠️ Error fetching dispatched list: $e");
-      }
+    if (company == "" || company == null) {
+      toastMessage(message: "Company Not Linked");
+      update();
+      return;
     }
-    // reportLoading = false;
-    // update();
+
+    if (selectedRange != null) {
+      fromDate = fmt(selectedRange!.start);
+      toDate = fmt(selectedRange!.end);
+    }
+
+    final apiUrl =
+        "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.get_so_ordered";
+
+    try {
+      /// 🔎 Build query safely
+      final Map<String, String> params = {
+        'company': company,
+        'customer': customer,
+      };
+
+      if (itemCode?.isNotEmpty == true) params['item_code'] = itemCode!;
+      if (itemName?.isNotEmpty == true) params['item_name'] = itemName!;
+      if (customerCode?.isNotEmpty == true) {
+        params['customer_part_code'] = customerCode!;
+      }
+      if (customerPartDesc?.isNotEmpty == true) {
+        params['customer_part_desc'] = customerPartDesc!;
+      }
+      if (salesOrder?.isNotEmpty == true) {
+        params['sales_order'] = salesOrder!;
+      }
+      if (fromDate != null) params['from_date'] = fromDate!;
+      if (toDate != null) params['to_date'] = toDate!;
+      if (status?.isNotEmpty == true) params['status'] = status!;
+
+      final uri = Uri.parse(apiUrl).replace(queryParameters: params);
+
+      final response = await http.get(
+        uri,
+        headers: {
+          HttpHeaders.contentTypeHeader: 'application/json',
+          'Cookie': AuthService.sessionId!,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> list = data['message'] ?? [];
+        reportList = list.map((e) => ReportListModel.fromJson(e)).toList();
+        print("✅ Dispatched items loaded: ${reportList.length}");
+        update();
+      } else {
+        print("❌ API Error ${response.statusCode}: ${response.body}");
+      }
+    } catch (e) {
+      print("⚠️ Fetch failed: $e");
+    }
   }
 
-  Future<void> createNewSO(UserModel user) async {
+  Future<void> createNewSO(
+    UserModel user, {
+    required BuildContext context,
+  }) async {
     if (AuthService.sessionId == null) {
       print("❌ No session found. Please login first.");
+      toastMessage(message: "Just LogOut And LogIN");
       isSubmittingCartItems = false;
       update();
       return;
     }
+
+    final DateTime now = DateTime.now();
+    String currentDate =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    String currentTime =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+
+    isSubmittingCartItems = true;
+    update();
 
     List<VmiItems> readyToOrder = [];
     List<VmiItems> updateOnlyVmi = [];
@@ -357,12 +453,112 @@ class VMIController extends GetxController {
     }
 
     if (readyToOrder.isNotEmpty) {
-      String? value = await createSalesOrder(
+      String? soName = await createSalesOrder(
         user: user,
         orderItems: readyToOrder,
       );
 
-      print(value);
+      if (soName != null) {
+        List<Map<String, dynamic>> payload = readyToOrder
+            .map(
+              (e) => e.toJson(
+                0,
+                status: "ORDERED",
+                date: currentDate,
+                time: currentTime,
+              ),
+            )
+            .toList();
+        bool? value = await updateVmiItems(payload);
+        if (value) {
+          // toastMessage(message: "Bin Updated");
+
+          List<String> emailsToSend = [];
+          for (EmailModel email in user.emails) {
+            emailsToSend.add(email.email);
+          }
+          isSubmittingCartItems = true;
+          update();
+          if (user.customerName != null) {
+            bool value = await sendBulkEmail(
+              message: buildEmailBody(user.customerName!, soName, readyToOrder),
+              emails: emailsToSend,
+              subject: "Order Confirmation – $soName Successfully Placed",
+            );
+            if (value) {
+              isSubmittingCartItems = false;
+              update();
+              // toastMessage(message: "Email Sent Success");
+              orderSuccessMsg(context);
+            }
+            // orderSuccessMsg(context);
+          }
+          vmiItems.clear();
+          cartList.clear();
+          // update();
+          await fetchItemsList(user: user);
+          update();
+        }
+        isSubmittingCartItems = false;
+        update();
+      } else {
+        isSubmittingCartItems = false;
+        update();
+      }
+    }
+    isSubmittingCartItems = true;
+    update();
+    if (updateOnlyVmi.isNotEmpty) {
+      List<Map<String, dynamic>> payload = updateOnlyVmi
+          .map((e) => e.toJson(e.clearedBins!))
+          .toList();
+
+      bool? value = await updateVmiItems(payload);
+      if (value) {
+        toastMessage(message: "Bin Count Updated");
+      }
+      isSubmittingCartItems = false;
+      update();
+    }
+    isSubmittingCartItems = false;
+    update();
+  }
+
+  Future<bool> updateVmiItems(List<Map<String, dynamic>> items) async {
+    final url = Uri.parse(
+      "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.update_vmi_items",
+    );
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": AuthService.sessionId!, // IMPORTANT
+            },
+            body: jsonEncode({"items": items}),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("✅ VMI update response: $data");
+        isSubmittingCartItems = false;
+        update();
+        return true;
+      } else {
+        print("❌ Update failed: ${response.statusCode}");
+        print(response.body);
+        isSubmittingCartItems = false;
+        update();
+        return false;
+      }
+    } catch (e) {
+      print("❌ Exception while updating VMI items: $e");
+      isSubmittingCartItems = false;
+      update();
+      return false;
     }
   }
 
@@ -387,6 +583,8 @@ class VMIController extends GetxController {
         "contact_person": orderItems[0].contactPerson,
         "selling_price_list": orderItems[0].priceList,
         "currency": orderItems[0].currency,
+        "vmi_id": orderItems[0].vmiId,
+        "set_warehouse": orderItems[0].customerBackUpWarehouse,
         "cart_items": orderItems
             .map(
               (e) => {
@@ -406,7 +604,6 @@ class VMIController extends GetxController {
       final data = jsonDecode(response.body);
       return data["message"]?["sales_order"];
     }
-
     return null;
   }
 
@@ -496,27 +693,26 @@ class VMIController extends GetxController {
   //         if (json["message"] != null) {
   //           print("✅ Updated Successfully: ${json['message']}");
   //           orderSuccessMsg(context);
-  //           // List<String> emailsToSend = [];
-  //           // for (EmailModel email in user.emails) {
-  //           //   emailsToSend.add(email.email);
-  //           // }
-  //           //
-  //           // if (user.customerName != null && soItemList.isNotEmpty) {
-  //           //   bool value = await sendBulkEmail(
-  //           //     message: buildEmailBody(
-  //           //       user.customerName!,
-  //           //       cartList[0].salesOrder!,
-  //           //       cartList,
-  //           //     ),
-  //           //     emails: emailsToSend,
-  //           //     subject:
-  //           //         "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
-  //           //   );
-  //           //   if (value) {
-  //           //     toastMessage(message: "Email Sent Success");
-  //           //
-  //           //   }
-  //           // }
+  //           List<String> emailsToSend = [];
+  //           for (EmailModel email in user.emails) {
+  //             emailsToSend.add(email.email);
+  //           }
+  //
+  //           if (user.customerName != null && soItemList.isNotEmpty) {
+  //             bool value = await sendBulkEmail(
+  //               message: buildEmailBody(
+  //                 user.customerName!,
+  //                 cartList[0].salesOrder!,
+  //                 cartList,
+  //               ),
+  //               emails: emailsToSend,
+  //               subject:
+  //                   "Order Confirmation – ${cartList[0].salesOrder} Successfully Placed",
+  //             );
+  //             if (value) {
+  //               toastMessage(message: "Email Sent Success");
+  //             }
+  //           }
   //           soItemList.clear();
   //           cartList.clear();
   //           update();
@@ -547,59 +743,10 @@ class VMIController extends GetxController {
   //   update();
   // }
 
-  Future<bool> updateBinAssignment(
-    List<Map<String, dynamic>> binUpdateList,
-  ) async {
-    if (AuthService.sessionId == null) {
-      print("❌ No session session found.");
-      return false;
-    }
-
-    final url = Uri.parse(
-      "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry.update_bin_item_assignment",
-    );
-
-    final body = {
-      "data": {"records": binUpdateList},
-    };
-
-    try {
-      final response = await http
-          .post(
-            url,
-            headers: {
-              "Content-Type": "application/json",
-              "Cookie": AuthService.sessionId!,
-            },
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final res = jsonDecode(response.body);
-
-        if (res["message"]?["status"] == "success") {
-          print("✅ Updated: ${res['message']['updated_rows']}");
-          toastMessage(message: "Bin Updated Successfully");
-          return true;
-        } else {
-          print("⚠ Response: $res");
-          return false;
-        }
-      } else {
-        print("❌ Server Error: ${response.statusCode}");
-        print(response.body);
-      }
-    } catch (e) {
-      print("❌ ERROR updateBinAssignment: $e");
-    }
-    return false;
-  }
-
   String buildEmailBody(
     String customerName,
     String salesOrder,
-    List<SoPriority> items,
+    List<VmiItems> items,
   ) {
     String tableRows = items
         .map(

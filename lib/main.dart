@@ -7,6 +7,7 @@ import 'package:flatten/helpers/services/storage/local_storage.dart';
 import 'package:flatten/helpers/theme/app_notifier.dart';
 import 'package:flatten/helpers/theme/app_style.dart';
 import 'package:flatten/helpers/theme/theme_customizer.dart';
+import 'package:flatten/myPages/KOT%20Repo/KOT%20Report.dart';
 import 'package:flatten/myPages/customerHome.dart';
 import 'package:flatten/myPages/login_new_screen.dart';
 import 'package:http/http.dart' as http;
@@ -107,6 +108,7 @@ class _MyAppState extends State<MyApp> {
           home: _isLoading
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : _isValid
+              // ? KotStockScreen()
               ? CustomerHomeScreen()
               : LoginPageNew(),
         );

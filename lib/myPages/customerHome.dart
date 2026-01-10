@@ -1,11 +1,13 @@
 import 'dart:async';
-
+import 'dart:io' show Platform;
 import 'package:flatten/app_constant.dart';
 import 'package:flatten/controllers/auth/login_controller.dart';
 import 'package:flatten/controllers/mycontroller/vmi_controller.dart';
 import 'package:flatten/models/bin_details.dart';
 import 'package:flatten/models/user.dart';
 import 'package:flatten/models/vmi_items.dart';
+import 'package:flatten/myPages/KOT%20Repo/KOT%20Report.dart';
+import 'package:flatten/myPages/KOT%20rep%20design/report.dart';
 import 'package:flatten/myPages/customerCart.dart';
 import 'package:flatten/myPages/login_new_screen.dart';
 import 'package:flatten/myPages/report_view.dart';
@@ -30,7 +32,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
   LoginController loginController = Get.put(LoginController());
   UserModel? user;
   Timer? _debounce;
-  bool _pressed = false;
+  final bool _pressed = false;
 
   @override
   void initState() {
@@ -66,6 +68,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
           ),
         ),
         actions: [
+          if (Platform.isWindows)
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => const ReportPage(),
+                  ),
+                );
+              },
+              child: Text("Kot Report"),
+            ),
           InkWell(
             onTap: () async {
               if (user != null) {
@@ -131,16 +145,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: GestureDetector(
         onTap: () async {
-          List<VmiItems>? value = await Navigator.push(
+          String? value = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => QRScannerScreen(controller: vmiController),
             ),
           );
-          if (value != null &&
-              value.isNotEmpty &&
-              value[0].customerPartCode != null) {
-            vmiController.searchController.text = value[0].customerPartCode!;
+          if (value != null) {
+            vmiController.searchController.text = value;
             await vmiController.onSearchChanged(
               vmiController.searchController.text,
               user: user,
@@ -308,11 +320,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                       (cartItem) =>
                                           cartItem.itemCode == item.itemCode,
                                     );
-
-                                    // final isSelected = controller.cartList.any(
-                                    //   (cartItem) =>
-                                    //       cartItem.itemCode == item.itemCode,
-                                    // );
+                                    bool makeOrder = controller.isReadyToOrder(
+                                      item,
+                                    );
                                     return InkWell(
                                       onTap: () {
                                         controller.onAddCart(item);
@@ -403,6 +413,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.end,
                                                 children: [
+                                                  if (makeOrder)
+                                                    Text(
+                                                      "ORDERED",
+                                                      style: const TextStyle(
+                                                        fontSize: 17,
+                                                        color: Colors.black54,
+                                                      ),
+                                                    ),
+                                                  if (item.status == "ORDERED")
+                                                    const SizedBox(height: 4),
                                                   Text(
                                                     (item.totalBins ?? 1)
                                                         .toString(),
@@ -564,34 +584,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               var code = capture.barcodes.first.rawValue;
 
               if (code != null) {
-                final regex = RegExp(r'BIN:\s*(.+)');
-                final match = regex.firstMatch(code);
-
-                if (match != null) {
-                  String binValue = match.group(1)!.trim();
-
-                  if (binValue.isEmpty) {
-                    toastMessage(message: "NO Bin Value Found");
-                    Navigator.pop(context);
-                    return;
-                  }
-
-                  VmiItems? item;
-
-                  try {
-                    item = widget.controller.vmiItems.firstWhere(
-                      (e) => e.itemCode == binValue,
-                    );
-                  } catch (e) {
-                    item = null;
-                  }
-
-                  Navigator.pop(context, item);
-                  return;
-                }
+                Navigator.pop(context, code);
+                _isProcessing = false;
+                return;
+              } else {
+                Navigator.pop(context);
+                _isProcessing = false;
+                return;
               }
-
-              _isProcessing = false;
             },
           ),
           Container(
