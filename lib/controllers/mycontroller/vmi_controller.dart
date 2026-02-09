@@ -366,7 +366,6 @@ class VMIController extends GetxController {
         "$baseUrl/api/method/my_api_app.api_methods.vendor_managed_inventry_new_1.get_so_ordered";
 
     try {
-      /// 🔎 Build query safely
       final Map<String, String> params = {
         'company': company,
         'customer': customer,
@@ -383,8 +382,8 @@ class VMIController extends GetxController {
       if (salesOrder?.isNotEmpty == true) {
         params['sales_order'] = salesOrder!;
       }
-      if (fromDate != null) params['from_date'] = fromDate!;
-      if (toDate != null) params['to_date'] = toDate!;
+      if (fromDate != null) params['from_date'] = fromDate;
+      if (toDate != null) params['to_date'] = toDate;
       if (status?.isNotEmpty == true) params['status'] = status!;
 
       final uri = Uri.parse(apiUrl).replace(queryParameters: params);

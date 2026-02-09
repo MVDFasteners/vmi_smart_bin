@@ -1,18 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
-
-import 'package:flatten/app_constant.dart';
 import 'package:flatten/controllers/auth/login_controller.dart';
 import 'package:flatten/controllers/mycontroller/vmi_controller.dart';
-import 'package:flatten/helpers/theme/app_style.dart';
-import 'package:flatten/helpers/widgets/my_container.dart';
-import 'package:flatten/helpers/widgets/my_spacing.dart';
-import 'package:flatten/helpers/widgets/my_text.dart';
-import 'package:flatten/models/bin_details.dart';
 import 'package:flatten/models/user.dart';
-import 'package:flatten/myPages/customerCart.dart';
-import 'package:flatten/myPages/invoice_pdf.dart';
-import 'package:flatten/myPages/login_new_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';

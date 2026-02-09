@@ -1,3 +1,4 @@
+import 'package:flatten/myPages/KOT%20rep%20design/pdf_page.dart';
 import 'package:flatten/myPages/KOT%20rep%20design/reportController.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_connect/http/src/utils/utils.dart';
@@ -5,8 +6,18 @@ import 'package:get/get_connect/http/src/utils/utils.dart';
 class DashboardSection extends StatelessWidget {
   final KOTReportController controller;
   final VoidCallback? onSubmit;
+  final VoidCallback? onPrint;
+  final VoidCallback? onExcel;
+  final VoidCallback? darkColor;
 
-  const DashboardSection({super.key, required this.controller, this.onSubmit});
+  const DashboardSection({
+    super.key,
+    required this.controller,
+    this.onSubmit,
+    this.onPrint,
+    this.onExcel,
+    this.darkColor,
+  });
 
   Widget card({
     required String title,
@@ -164,16 +175,6 @@ class DashboardSection extends StatelessWidget {
           SizedBox(
             width: 140,
             child: card(
-              title: "Bin So",
-              value: controller.binBasedSoCount.toString(),
-              icon: Icons.list_alt,
-              bgColor: Colors.red.shade50,
-              iconColor: Colors.red.shade800,
-            ),
-          ),
-          SizedBox(
-            width: 140,
-            child: card(
               title: "Bins To Fill",
               value: controller.binsToFillCount.toString(),
               icon: Icons.list_alt,
@@ -240,6 +241,33 @@ class DashboardSection extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: ElevatedButton(onPressed: onSubmit, child: Text("Submit")),
+            ),
+          ),
+          SizedBox(
+            height: 30,
+            width: 50,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: IconButton(onPressed: onPrint, icon: Icon(Icons.print)),
+            ),
+          ),
+          SizedBox(
+            height: 30,
+            width: 50,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: IconButton(onPressed: onExcel, icon: Icon(Icons.download)),
+            ),
+          ),
+          SizedBox(
+            height: 30,
+            width: 50,
+            child: Checkbox(
+              value: controller.isDarkColor,
+              onChanged: (v) {
+                controller.isDarkColor = v!;
+                controller.update();
+              },
             ),
           ),
         ],

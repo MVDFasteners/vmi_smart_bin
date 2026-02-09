@@ -47,6 +47,7 @@ class Service {
     String? storeName,
     String? pickingWarehouse,
     String? groupWarehouse,
+    String? soiWarehouseGroup,
     required String platingWarehouse,
   }) async {
     if (groupWarehouse == null) {
@@ -70,6 +71,7 @@ class Service {
       if (groupWarehouse != null) "groupWarehouse": groupWarehouse,
       "plattingWarehouse": platingWarehouse,
       "pickingWarehouse": pickingWarehouse,
+      "soiWarehouseGroup": soiWarehouseGroup,
     };
 
     try {
@@ -506,6 +508,7 @@ class Service {
   Future<bool> upsertKotReport(
     List<PendingSoItem> selectedItems,
     String stkId,
+    double boxes,
   ) async {
     final String url =
         "$baseUrl/api/method/my_api_app.api_methods.kot_report_api.upsert_kot_report";
@@ -525,6 +528,9 @@ class Service {
           "base_uom": item.baseUom,
           "conversion_factor": item.conversionFactor ?? 1,
           "available_stock": item.availableStock,
+          "box_qty": item.enteredBoxQty,
+          "packet_qty": item.enteredPacketQty,
+          "no_of_box": boxes,
         };
       }).toList();
       print(items);

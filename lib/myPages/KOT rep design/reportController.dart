@@ -6,6 +6,7 @@ import 'package:flatten/helpers/services/auth_service.dart';
 import 'package:flatten/myPages/KOT%20Repo/kot%20model.dart';
 import 'package:flatten/myPages/KOT%20Repo/service.dart';
 import 'package:flatten/myPages/KOT%20Repo/soPendingReport.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/extension_navigation.dart';
 import 'package:get/get_navigation/src/snackbar/snackbar.dart';
@@ -19,7 +20,7 @@ class KOTReportController extends GetxController {
   List<BatchStock> stockBatchList = [];
 
   int binsToFillCount = 0;
-  int binBasedSoCount = 0;
+  bool isDarkColor = false;
 
   bool isAllSelected = false;
   bool isLoading = false;
@@ -52,6 +53,13 @@ class KOTReportController extends GetxController {
 
   int get selectedRows => filteredSoList.where((e) => e.isSelected).length;
 
+  TextEditingController soTextEditCtrl = TextEditingController();
+  TextEditingController noOfBoxesCtrl = TextEditingController();
+
+  PendingSoItem? lastSelectedItem() {
+    return filteredSoList.where((e) => e.isSelected).lastOrNull; // Dart 3+
+  }
+
   void toggleSelection(PendingSoItem item, context) {
     if (item.isSelected) {
       item.isSelected = false;
@@ -59,15 +67,33 @@ class KOTReportController extends GetxController {
       return;
     }
 
-    if (selectedRows >= 10) {
+    if (selectedRows >= 100) {
       showCustomToast("Limit Reached, You can select only 10 items", context);
       return;
     }
+    // print({
+    //   "box: ${item.noOfBox}, pac: ${item.packetQty}, boxqty ${item.boxQty}",
+    // });
 
     // ✅ allowed selection rules
     if (item.colorCode == 1 || item.colorCode == 2) {
       if (reportType == "Normal") {
-        item.isSelected = true;
+        if (item.enteredBoxQty != 0 && item.enteredPacketQty != 0) {
+          if (selectedRows <= 0) {
+            searchSo = item.salesOrder!;
+            soTextEditCtrl.text = searchSo;
+            applyFilters();
+          }
+
+          PendingSoItem? itm = lastSelectedItem();
+          if (itm != null) {
+            if (itm.salesOrder! == item.salesOrder) {
+              item.isSelected = true;
+            }
+          } else {
+            item.isSelected = true;
+          }
+        }
       } else if (reportType == "Bin Based") {
         if (item.colorCode == 1) {
           item.isSelected = true;
@@ -80,7 +106,10 @@ class KOTReportController extends GetxController {
           showCustomToast("Backup Warehouse Not Added", context);
         }
       }
+    } else {
+      showCustomToast("Fill All Fields to Select", context);
     }
+
     update();
   }
 
@@ -96,40 +125,47 @@ class KOTReportController extends GetxController {
       return;
     }
 
-    int count = selectedRows;
+    if (searchSo != "" && searchSo != null) {
+      int count = selectedRows;
 
-    for (var item in filteredSoList) {
-      if (count >= 10) break;
+      for (var item in filteredSoList) {
+        if (count >= 100) break;
 
-      if (reportType == "Normal") {
-        if ((item.colorCode == 1 || item.colorCode == 2) && !item.isSelected) {
-          item.isSelected = true;
-          count++;
-        }
-      } else if (reportType == "Bin Based") {
-        if (item.colorCode == 1 && !item.isSelected) {
-          item.isSelected = true;
-          count++;
-        }
-      } else {
-        if (item.customerBackupWarehouse != null &&
-            item.customerBackupWarehouse != "") {
-          item.isSelected = true;
-          count++;
+        if (reportType == "Normal") {
+          if (item.enteredBoxQty != 0 &&
+              // item.enteredNoOfBoxQty != 0 &&
+              item.enteredPacketQty != 0) {
+            if ((item.colorCode == 1 || item.colorCode == 2) &&
+                !item.isSelected) {
+              item.isSelected = true;
+              count++;
+            }
+          }
+        } else if (reportType == "Bin Based") {
+          if (item.colorCode == 1 && !item.isSelected) {
+            item.isSelected = true;
+            count++;
+          }
+        } else {
+          if (item.customerBackupWarehouse != null &&
+              item.customerBackupWarehouse != "") {
+            item.isSelected = true;
+            count++;
+          }
         }
       }
-    }
 
-    if (count >= 10) {
-      Get.snackbar(
-        "Limit Reached",
-        "Maximum 10 items can be selected",
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
+      if (count >= 10) {
+        Get.snackbar(
+          "Limit Reached",
+          "Maximum 10 items can be selected",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
 
-    isAllSelected = count <= 10;
-    update();
+      isAllSelected = count <= 10;
+      update();
+    }
   }
 
   Future<bool> updateKotDocType() async {
@@ -166,7 +202,13 @@ class KOTReportController extends GetxController {
     }
 
     if (stkId != null) {
-      bool val = await Service().upsertKotReport(selectedItems, stkId);
+      int boxes = int.parse(noOfBoxesCtrl.text);
+      double dividedBoxes = boxes / selectedItems.length;
+      bool val = await Service().upsertKotReport(
+        selectedItems,
+        stkId,
+        dividedBoxes,
+      );
       await loadReport();
       isLoading = false;
       update();
@@ -222,20 +264,6 @@ class KOTReportController extends GetxController {
         storeName: storeName,
       );
       isLoading = false;
-
-      String plattingWarehouse = "Non Moving Warehouse - MVDF";
-      if (company == "MVD FASTENERS PRIVATE LIMITED") {
-        plattingWarehouse = "Non Moving Warehouse - MVDF";
-      } else {
-        plattingWarehouse = "Non Moving Warehouse - MFPL";
-      }
-
-      binBasedSoCount = await Service().getPendingSoItemsBinBasedOnlyCount(
-        company: company,
-        storeName: storeName,
-        platingWarehouse: plattingWarehouse,
-      );
-
       String excludeWarehouse = "";
       String parentWarehouse = "";
       excludeWarehouse = company == "MVD FASTENERS 1"
@@ -245,13 +273,13 @@ class KOTReportController extends GetxController {
           ? "All Warehouses - MFPL"
           : "All Warehouses - MVDF";
 
-      binsToFillCount = await Service().getBinToFillItemsCount(
+      List<PendingSoItem> items = await Service().getBinToFillItems(
         company: company,
         excludeWarehouse: excludeWarehouse,
         parentWarehouse: parentWarehouse,
         storeName: storeName,
       );
-
+      binsToFillCount = items.length;
       update();
     } else if (reportType == "Bin Based") {
       await loadReportBinBased();
@@ -273,15 +301,18 @@ class KOTReportController extends GetxController {
     String plattingWarehouse = "Non Moving Warehouse - MVDF";
     String? filterGroupWarehouse;
     String? pickingWarehouse = "Picking - MVDF";
+    String? soiWarehouseGroup = "Picking - MVDF";
 
     if (company == "MVD FASTENERS PRIVATE LIMITED") {
       filterGroupWarehouse = "All Warehouses - MVDF";
       plattingWarehouse = "Non Moving Warehouse - MVDF";
       pickingWarehouse = "Picking - MVDF";
+      soiWarehouseGroup = "Picking - MVDF";
     } else {
-      filterGroupWarehouse = "All Warehouses - MFPL";
+      filterGroupWarehouse = "ALL Warehouses - MFPL";
       plattingWarehouse = "Non Moving Warehouse - MFPL";
       pickingWarehouse = "Picking - MFPL";
+      soiWarehouseGroup = "Picking - MFPL";
     }
 
     List<PendingSoItem> items = await Service().getPendingSoItems(
@@ -290,6 +321,7 @@ class KOTReportController extends GetxController {
       groupWarehouse: filterGroupWarehouse,
       platingWarehouse: plattingWarehouse,
       pickingWarehouse: pickingWarehouse,
+      soiWarehouseGroup: soiWarehouseGroup,
     );
 
     masterSoList = items;
@@ -318,8 +350,11 @@ class KOTReportController extends GetxController {
       parentWarehouse: parentWarehouse,
       storeName: storeName,
     );
+    binsToFillCount = items.length;
     masterSoList = items;
+
     buildReducedList();
+    // filteredSoList = reducedSoList;
     applyFilters();
     update();
   }

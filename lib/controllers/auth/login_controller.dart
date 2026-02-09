@@ -9,6 +9,7 @@ import 'package:flatten/helpers/widgets/my_form_validator.dart';
 import 'package:flatten/helpers/widgets/my_validators.dart';
 import 'package:flatten/myPages/KOT%20Repo/KOT%20Report.dart';
 import 'package:flatten/myPages/customerHome.dart';
+import 'package:flatten/myPages/smartPO/storePeopleHome.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -86,7 +87,7 @@ class LoginController extends MyController {
 
           // Navigator.pushReplacement(
           //   context,
-          //   MaterialPageRoute(builder: (context) => KotStockScreen()),
+          //   MaterialPageRoute(builder: (context) => SmartOrderPoHome()),
           // );
 
           Navigator.pushReplacement(

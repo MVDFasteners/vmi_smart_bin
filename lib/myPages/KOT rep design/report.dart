@@ -1,13 +1,21 @@
-import 'package:flatten/myPages/KOT%20Repo/kot%20model.dart';
-import 'package:flatten/myPages/KOT%20Repo/service.dart';
+import 'dart:io';
+
+import 'package:flatten/app_constant.dart';
+import 'package:flatten/myPages/KOT%20Repo/soPendingReport.dart';
 import 'package:flatten/myPages/KOT%20rep%20design/dashboard%20selection.dart';
+import 'package:flatten/myPages/KOT%20rep%20design/excel+page.dart';
 import 'package:flatten/myPages/KOT%20rep%20design/filter%20bar.dart';
+import 'package:flatten/myPages/KOT%20rep%20design/pdf_page.dart';
 import 'package:flatten/myPages/KOT%20rep%20design/repo%20table.dart';
 import 'package:flatten/myPages/KOT%20rep%20design/reportController.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:get/get_state_manager/src/simple/get_state.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
@@ -52,6 +60,21 @@ class _ReportPageState extends State<ReportPage> {
           builder: (controller) {
             return Column(
               children: [
+                DashboardSection(
+                  onPrint: () async {
+                    await openPdf(itemList: kotReportController.filteredSoList);
+                  },
+                  onExcel: () async {
+                    await openExcel(
+                      itemList: kotReportController.filteredSoList,
+                    );
+                  },
+                  controller: kotReportController,
+                  onSubmit: () async {
+                    await confirmAndSubmit(context, controller);
+                  },
+                ),
+
                 FilterBar(
                   storeName: controller.storeName,
                   onStoreNameChanged: (v) async {
@@ -103,7 +126,6 @@ class _ReportPageState extends State<ReportPage> {
                     controller.applyFilters();
                     controller.update();
                   },
-
                   widgetList: [
                     IconButton(
                       onPressed: () {
@@ -119,12 +141,6 @@ class _ReportPageState extends State<ReportPage> {
                   ],
                   controller: controller,
                 ),
-                DashboardSection(
-                  controller: kotReportController,
-                  onSubmit: () async {
-                    await confirmAndSubmit(context, controller);
-                  },
-                ),
                 Text(
                   kotReportController.storeName,
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 21),
@@ -136,6 +152,32 @@ class _ReportPageState extends State<ReportPage> {
         ),
       ),
     );
+  }
+
+  Future<void> openPdf({required List<PendingSoItem> itemList}) async {
+    final pdf = await PdfPrintViewKot().generateInvoicePdf(
+      companyName: "MVD FASTENERS Pvt Ltd.",
+      items: itemList,
+    );
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/KOT_Report.pdf');
+
+    await file.writeAsBytes(await pdf.save());
+
+    // Opens with default
+    //PDF viewer (Adobe / Edge)
+    await OpenFile.open(file.path);
+  }
+
+  Future<void> openExcel({required List<PendingSoItem> itemList}) async {
+    final file = await ExcelPrintViewKot().generateInvoiceExcel(
+      companyName: "MVD FASTENERS Pvt Ltd.",
+      items: itemList,
+
+    );
+
+    // Opens with Excel / WPS / Google Sheets
+    await OpenFile.open(file.path);
   }
 
   Future<void> confirmAndSubmit(
@@ -157,8 +199,19 @@ class _ReportPageState extends State<ReportPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text("Confirm KOT"),
-          content: Text(
-            "You have selected ${selectedItems.length} items.\n\nDo you want to continue?",
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "You have selected ${selectedItems.length} items.\n\nDo you want to continue?",
+              ),
+              TextFormField(
+                controller: controller.noOfBoxesCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(hintText: 'No of boxes'),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -166,7 +219,13 @@ class _ReportPageState extends State<ReportPage> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () {
+                if (controller.noOfBoxesCtrl.text == "") {
+                  showCustomToast("Give No Of Box", context);
+                } else {
+                  Navigator.pop(context, true);
+                }
+              },
               child: const Text("Confirm"),
             ),
           ],

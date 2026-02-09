@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
+
 class PendingSoItem {
   String? salesOrder;
   String? soiName;
   double? soQty;
   double? stockQty;
+  String? stockByWarehouse;
   String? deliveryDate;
   String? storeName;
   double? pickedStockQty;
@@ -36,6 +39,13 @@ class PendingSoItem {
   String? poNumber;
   double? binQty;
   double? backupStk;
+  double? boxQty;
+  double? packetQty;
+
+  late TextEditingController boxQtyController;
+  late TextEditingController packetQtyController;
+
+  // late TextEditingController noOfBoxQtyController;
 
   PendingSoItem({
     this.company,
@@ -47,6 +57,7 @@ class PendingSoItem {
     this.itemName,
     this.soQty,
     this.stockQty,
+    this.stockByWarehouse,
     this.deliveryDate,
     this.storeName,
     this.pickedStockQty,
@@ -72,8 +83,12 @@ class PendingSoItem {
     this.poNumber,
     this.binQty,
     this.backupStk,
-  });
-
+    this.boxQty,
+    this.packetQty,
+  }) {
+    boxQtyController = TextEditingController();
+    packetQtyController = TextEditingController();
+  }
 
   factory PendingSoItem.fromJson(Map<String, dynamic> json) {
     return PendingSoItem(
@@ -84,12 +99,18 @@ class PendingSoItem {
       stockQty: (json['stock_qty'] ?? 0).toDouble(),
       deliveryDate: json['delivery_date'],
       storeName: json['store_name'],
+      stockByWarehouse: json['stock_by_warehouse'],
       baseUom: json['stock_uom'],
       modeOfShipment: json['custom_mode_of_shipment'],
 
       pickedStockQty: (json['picked_stock_qty'] ?? 0).toDouble(),
       deliveredStockQty: (json['delivered_stock_qty'] ?? 0).toDouble(),
       kotQty: (json['kot_qty'] ?? 0).toDouble(),
+
+      boxQty: (json['box_qty'] ?? 0).toDouble(),
+      packetQty: (json['packet_qty'] ?? 0).toDouble(),
+
+      // noOfBox: (json['no_of_box'] ?? 0).toDouble(),
       plattingStockQty: (json['platting_stock_qty'] ?? 0).toDouble(),
       pendingQty: (json['pending_qty'] ?? 0).toDouble(),
       pendingQtyBaseUom: (json['pending_qty_base_uom'] ?? 0).toDouble(),
@@ -109,6 +130,45 @@ class PendingSoItem {
       poNumber: json['po_number'] ?? "",
       conversionFactor: json['conversion_factor'],
     );
+  }
+
+  double get enteredBoxQty {
+    final val = double.tryParse(boxQtyController.text);
+    if (val == null) return 0;
+
+    // Prevent over-entry
+    if (boxQty != null && val > boxQty!) {
+      return boxQty!;
+    }
+    return val;
+  }
+
+  // double get enteredNoOfBoxQty {
+  //   final val = double.tryParse(noOfBoxQtyController.text);
+  //   if (val == null) return 0;
+  //
+  //   // Prevent over-entry
+  //   if (noOfBox != null && val > noOfBox!) {
+  //     return noOfBox!;
+  //   }
+  //   return val;
+  // }
+
+  double get enteredPacketQty {
+    final val = double.tryParse(packetQtyController.text);
+    if (val == null) return 0;
+
+    // Prevent over-entry
+    if (packetQty != null && val > packetQty!) {
+      return packetQty!;
+    }
+    return val;
+  }
+
+  void dispose() {
+    packetQtyController.dispose();
+    // noOfBoxQtyController.dispose();
+    boxQtyController.dispose();
   }
 
   Map<String, dynamic> toJsonStkTransfer({
@@ -155,6 +215,7 @@ class PendingSoItem {
       kotQty: kotQty,
       modeOfShipment: modeOfShipment,
       availableStock: availableStock ?? this.availableStock,
+      stockByWarehouse: stockByWarehouse,
       plattingStockQty: plattingStockQty,
       pendingQty: pendingQty ?? this.pendingQty,
       basePending: basePending ?? this.basePending,

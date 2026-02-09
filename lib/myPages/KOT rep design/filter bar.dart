@@ -95,10 +95,15 @@ class FilterBar extends StatelessWidget {
     );
   }
 
-  Widget _field(String hint, ValueChanged<String> onChanged) {
+  Widget _field(
+    String hint,
+    ValueChanged<String> onChanged, {
+    TextEditingController? controller,
+  }) {
     return SizedBox(
       width: 200,
       child: TextField(
+        controller: controller,
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hint,
@@ -129,7 +134,7 @@ class FilterBar extends StatelessWidget {
           children: [
             drop(
               reportType,
-              const ["Normal", "Bin Based", "Bins To Fill"],
+              const ["Normal", "Bins To Fill"],
               onReportTypeChanged,
               120,
             ),
@@ -145,7 +150,7 @@ class FilterBar extends StatelessWidget {
             const SizedBox(width: 8),
             _field("Item Name", onItemName),
             const SizedBox(width: 8),
-            _field("Sales Order", onSo),
+            _field("Sales Order", onSo, controller: controller.soTextEditCtrl),
             const SizedBox(width: 8),
             _field("Customer", onCustomer),
             const SizedBox(width: 8),

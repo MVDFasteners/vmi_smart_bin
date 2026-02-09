@@ -323,6 +323,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                     bool makeOrder = controller.isReadyToOrder(
                                       item,
                                     );
+
                                     return InkWell(
                                       onTap: () {
                                         controller.onAddCart(item);

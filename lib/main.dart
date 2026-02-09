@@ -10,6 +10,7 @@ import 'package:flatten/helpers/theme/theme_customizer.dart';
 import 'package:flatten/myPages/KOT%20Repo/KOT%20Report.dart';
 import 'package:flatten/myPages/customerHome.dart';
 import 'package:flatten/myPages/login_new_screen.dart';
+import 'package:flatten/myPages/smartPO/storePeopleHome.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -104,11 +105,12 @@ class _MyAppState extends State<MyApp> {
             GlobalCupertinoLocalizations.delegate,
             FlutterQuillLocalizations.delegate,
           ],
+
           supportedLocales: Language.getLocales(),
           home: _isLoading
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : _isValid
-              // ? KotStockScreen()
+              // ? SmartOrderPoHome()
               ? CustomerHomeScreen()
               : LoginPageNew(),
         );

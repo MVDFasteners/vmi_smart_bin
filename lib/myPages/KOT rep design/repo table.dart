@@ -33,7 +33,7 @@ class _ReportTableState extends State<ReportTable> {
         controller: horizontalController,
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: 1700,
+          width: 2500,
           child: Column(
             children: [
               Container(
@@ -72,10 +72,13 @@ class _ReportTableState extends State<ReportTable> {
                               },
                               onTap: () => widget.kotReportController
                                   .toggleSelection(r, context),
-                              child: Container(
-                                height: 44,
-                                color: getRowColor(r.colorCode),
-                                child: Row(children: [..._values(r)]),
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Container(
+                                  height: 44,
+                                  color: getRowColor(r.colorCode),
+                                  child: Row(children: [..._values(r)]),
+                                ),
                               ),
                             );
                           },
@@ -105,7 +108,6 @@ class _ReportTableState extends State<ReportTable> {
       ];
     } else {
       return [
-
         Padding(
           padding: const EdgeInsets.only(left: 16),
           child: headerCell("Delivery Date", 140),
@@ -119,6 +121,8 @@ class _ReportTableState extends State<ReportTable> {
         headerCell("MOS", 100),
         headerCell("Pending", 120),
         headerCell("Available Stock", 120),
+        headerCell("Packet Qty", 120),
+        headerCell("Box Qty", 120),
         headerCell("Plating Stock", 120),
         headerCell("Btn", 60),
       ];
@@ -224,6 +228,9 @@ class _ReportTableState extends State<ReportTable> {
         cell(r.modeOfShipment ?? "", 100, selected: r.isSelected),
         cell("${r.pendingQty}", 120, selected: r.isSelected),
         cell("${r.availableStock}", 120, selected: r.isSelected),
+        textFrmField(r.packetQtyController),
+        textFrmField(r.boxQtyController),
+        // textFrmField(r.noOfBoxQtyController),
         cell("${r.plattingStockQty}", 120, selected: r.isSelected),
         ElevatedButton(
           onPressed: () async {
@@ -237,6 +244,16 @@ class _ReportTableState extends State<ReportTable> {
         ),
       ];
     }
+  }
+
+  Widget textFrmField(TextEditingController controller) {
+    return SizedBox(
+      width: 120,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: TextFormField(controller: controller),
+      ),
+    );
   }
 
   Widget copyHoverCell(
@@ -286,13 +303,21 @@ class _ReportTableState extends State<ReportTable> {
   Color getRowColor(int? code) {
     switch (code) {
       case 1:
-        return Colors.green.shade100;
+        return widget.kotReportController.isDarkColor
+            ? Colors.green.shade400
+            : Colors.green.shade100;
       case 2:
-        return Colors.orange.shade100;
+        return widget.kotReportController.isDarkColor
+            ? Colors.orange.shade400
+            : Colors.orange.shade100;
       case 3:
-        return Colors.blue.shade100;
+        return widget.kotReportController.isDarkColor
+            ? Colors.blue.shade400
+            : Colors.blue.shade100;
       default:
-        return Colors.red.shade100;
+        return widget.kotReportController.isDarkColor
+            ? Colors.red.shade400
+            : Colors.red.shade100;
     }
   }
 
