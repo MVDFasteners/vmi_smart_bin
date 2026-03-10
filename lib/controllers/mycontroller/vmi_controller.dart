@@ -21,6 +21,9 @@ class VMIController extends GetxController {
 
   List<VmiItems> vmiItems = [];
 
+  List<String> orderTypeList = ["Bulk Bin", "Single Bin"];
+  String orderType = "Bulk Bin";
+
   bool selectAll = false;
   bool isSubmittingCartItems = false;
   bool reportLoading = false;
@@ -273,7 +276,6 @@ class VMIController extends GetxController {
       print("❌ No session found. Please login first.");
       return;
     }
-
     String? customer = user.customerId;
     String? company = user.company;
     vmiItems = [];
@@ -400,6 +402,7 @@ class VMIController extends GetxController {
         final data = jsonDecode(response.body);
         final List<dynamic> list = data['message'] ?? [];
         reportList = list.map((e) => ReportListModel.fromJson(e)).toList();
+
         print("✅ Dispatched items loaded: ${reportList.length}");
         update();
       } else {
@@ -436,7 +439,7 @@ class VMIController extends GetxController {
     List<VmiItems> updateOnlyVmi = [];
 
     for (VmiItems item in cartList) {
-      if (item.isBulkSubmit == 1) {
+      if (orderType == "Bulk Bin") {
         readyToOrder.add(item);
       } else {
         int totalBins = item.totalBins == null ? 1 : item.totalBins!;
@@ -514,8 +517,9 @@ class VMIController extends GetxController {
 
       bool? value = await updateVmiItems(payload);
       if (value) {
-        toastMessage(message: "Bin Count Updated");
+        binCountUpdated(context);
       }
+      cartList.clear();
       isSubmittingCartItems = false;
       update();
     }
@@ -534,7 +538,7 @@ class VMIController extends GetxController {
             url,
             headers: {
               "Content-Type": "application/json",
-              "Cookie": AuthService.sessionId!, // IMPORTANT
+              "Cookie": AuthService.sessionId!,
             },
             body: jsonEncode({"items": items}),
           )

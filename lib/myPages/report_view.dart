@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flatten/controllers/auth/login_controller.dart';
+import 'package:flatten/controllers/mycontroller/excel_workspace.dart';
 import 'package:flatten/controllers/mycontroller/vmi_controller.dart';
 import 'package:flatten/models/user.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,15 @@ class _ReportViewScreenState extends State<ReportViewScreen>
               padding: EdgeInsets.only(right: 12),
               child: Icon(Icons.refresh, color: Colors.white),
             ),
+          ),
+          IconButton(
+            onPressed: () async {
+              if (vmiController.reportList.isNotEmpty) {
+                await exportAndShareExcel(vmiController.reportList);
+                print("worin");
+              }
+            },
+            icon: Icon(Icons.share, color: Colors.white),
           ),
           GetBuilder(
             init: vmiController,

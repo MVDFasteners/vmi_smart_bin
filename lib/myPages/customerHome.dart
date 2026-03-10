@@ -16,6 +16,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_state_manager/src/simple/get_state.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -42,6 +43,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
 
   Future<void> _onLoad() async {
     user = await loginController.fetchUser();
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    String? value = pref.getString("orderType");
+    vmiController.orderType = value ?? "Bulk Bin";
     if (user != null) {
       await vmiController.fetchItemsList(user: user!);
     }
@@ -82,13 +86,27 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
             ),
           InkWell(
             onTap: () async {
+              SharedPreferences pref = await SharedPreferences.getInstance();
+              bool? value = await _openSettings(context, vmiController);
+              if (value ?? false) {
+                pref.setString("orderType", vmiController.orderType);
+              }
+              print("value $value");
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(Icons.settings, color: Colors.red),
+            ),
+          ),
+          InkWell(
+            onTap: () async {
               if (user != null) {
                 await vmiController.fetchItemsList(user: user!);
               }
             },
             child: Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.refresh, color: Color(0xFF006784)),
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(Icons.refresh, color: Colors.white),
             ),
           ),
           GetBuilder(
@@ -284,6 +302,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                     ),
                   ),
                 ),
+
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -324,131 +343,177 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
                                       item,
                                     );
 
-                                    return InkWell(
-                                      onTap: () {
-                                        controller.onAddCart(item);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        child: Container(
-                                          height: 120,
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              18,
+                                    return Stack(
+                                      children: [
+                                        InkWell(
+                                          onTap: () {
+                                            controller.onAddCart(item);
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 8,
                                             ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black12
-                                                    .withOpacity(0.1),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Checkbox(
-                                                value: isSelected,
-                                                activeColor: Colors.blue,
-                                                onChanged: (v) {},
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    SizedBox(
-                                                      width: 230,
-                                                      child: Text(
-                                                        item.customerPartCode ??
-                                                            item.customerPartDesc ??
-                                                            "---",
-                                                        style: const TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    SizedBox(
-                                                      width: 250,
-                                                      child: Text(
-                                                        item.customerPartDesc ??
-                                                            item.itemName ??
-                                                            "",
-                                                        style: const TextStyle(
-                                                          fontSize: 13.5,
-                                                          color: Colors.black87,
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Text(
-                                                      "Qty: ${item.qty}",
-                                                      style: const TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      "PO No: ${item.poNumber}",
-                                                      style: const TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: [
-                                                  if (makeOrder)
-                                                    Text(
-                                                      "ORDERED",
-                                                      style: const TextStyle(
-                                                        fontSize: 17,
-                                                        color: Colors.black54,
-                                                      ),
-                                                    ),
-                                                  if (item.status == "ORDERED")
-                                                    const SizedBox(height: 4),
-                                                  Text(
-                                                    (item.totalBins ?? 1)
-                                                        .toString(),
-                                                    style: const TextStyle(
-                                                      fontSize: 17,
-                                                      color: Colors.black54,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    item.clearedBins == null
-                                                        ? "0"
-                                                        : item.clearedBins!
-                                                              .toString(),
-                                                    style: const TextStyle(
-                                                      fontSize: 17,
-                                                      color: Colors.black54,
-                                                    ),
+                                            child: Container(
+                                              height: 120,
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(18),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black12
+                                                        .withOpacity(0.1),
+                                                    blurRadius: 10,
+                                                    offset: const Offset(0, 4),
                                                   ),
                                                 ],
                                               ),
-                                            ],
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Checkbox(
+                                                    value: isSelected,
+                                                    activeColor: Colors.blue,
+                                                    onChanged: (v) {},
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 230,
+                                                          child: Text(
+                                                            item.customerPartCode ??
+                                                                item.customerPartDesc ??
+                                                                "---",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 2,
+                                                        ),
+                                                        SizedBox(
+                                                          width: 250,
+                                                          child: Text(
+                                                            item.customerPartDesc ??
+                                                                item.itemName ??
+                                                                "",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize:
+                                                                      13.5,
+                                                                  color: Colors
+                                                                      .black87,
+                                                                ),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                        Text(
+                                                          "Qty: ${item.qty} ${item.uom}",
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 13,
+                                                                color: Colors
+                                                                    .black54,
+                                                              ),
+                                                        ),
+                                                        Text(
+                                                          "PO No: ${item.poNumber}",
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 13,
+                                                                color: Colors
+                                                                    .black54,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      if (makeOrder)
+                                                        Text(
+                                                          "ORDERED",
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 17,
+                                                                color: Colors
+                                                                    .black54,
+                                                              ),
+                                                        ),
+
+                                                      // Text(
+                                                      //   "Stock : ${(item.customerBackUpStock ?? 0)}",
+                                                      //   style: TextStyle(
+                                                      //     fontWeight:
+                                                      //         FontWeight.bold,
+                                                      //     fontSize: 20,
+                                                      //   ),
+                                                      // ),
+                                                      // if (item.status == "ORDERED")
+                                                      //   const SizedBox(height: 4),
+                                                      Text(
+                                                        (item.totalBins ?? 1)
+                                                            .toString(),
+                                                        style: const TextStyle(
+                                                          fontSize: 17,
+                                                          color: Colors.black54,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        item.clearedBins == null
+                                                            ? "0"
+                                                            : item.clearedBins!
+                                                                  .toString(),
+                                                        style: const TextStyle(
+                                                          fontSize: 17,
+                                                          color: Colors.black54,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                        Positioned(
+                                          top: 9,
+                                          right: 4,
+                                          child: Container(
+                                            height: 15,
+                                            width: 15,
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  (item.customerBackUpStock ??
+                                                          0) >=
+                                                      (item.qty ?? 0)
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     );
                                   },
                                 ),
@@ -535,6 +600,55 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen>
               );
             },
             label: Text("Log Out", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _openSettings(
+    BuildContext context,
+    VMIController controller,
+  ) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Settings"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Theme(
+              data: Theme.of(context).copyWith(canvasColor: Colors.white),
+              child: DropdownButtonFormField<String>(
+                value: controller.orderType,
+                decoration: const InputDecoration(
+                  labelText: "Status",
+                  border: OutlineInputBorder(),
+                ),
+                items: controller.orderTypeList
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) => controller.orderType = v!,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey,
+              foregroundColor: Colors.white, // text color
+            ),
+            onPressed: () {
+              Navigator.pop(ctx, false);
+            },
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx, true); // ✅ return true
+            },
+            child: const Text("Update"),
           ),
         ],
       ),

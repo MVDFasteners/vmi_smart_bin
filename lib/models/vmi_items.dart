@@ -71,7 +71,7 @@ class VmiItems {
       itemName: json['item_name'],
       customerPartCode: json['customer_part_code'],
       customerPartDesc: json['customer_part_description'],
-      customerBackUpStock: json['stock_qty'],
+      customerBackUpStock: json['available_stock'],
       totalBins: json['number_of_bins'],
       clearedBins: json['number_of_times_submit'],
       binWeight: json['bin_weight'],

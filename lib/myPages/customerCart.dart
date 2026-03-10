@@ -186,7 +186,7 @@ class CustomerCartView extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        item.itemCode ?? '',
+                                        item.customerPartCode ?? '',
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -195,7 +195,7 @@ class CustomerCartView extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        item.itemCode ?? '',
+                                        item.customerPartDesc ?? '',
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.grey.shade700,

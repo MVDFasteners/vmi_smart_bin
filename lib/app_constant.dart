@@ -59,6 +59,47 @@ void orderSuccessMsg(BuildContext context) {
   );
 }
 
+void binCountUpdated(BuildContext context) {
+  final fToast = FToast();
+  fToast.init(context);
+
+  final bool isPhone = MediaQuery.of(context).size.width < 600;
+  if (!isPhone) return;
+
+  Widget toast = Container(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    decoration: BoxDecoration(
+      color: Colors.green.shade700,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.check_circle, color: Colors.white, size: 40),
+        const SizedBox(width: 8),
+        Text(
+          "Bin Count Updated",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20, // 🔥 BIG text
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  fToast.showToast(
+    child: toast,
+    gravity: ToastGravity.CENTER,
+    toastDuration: const Duration(seconds: 2),
+  );
+}
+
 void showCustomToast(String message, context) {
   FToast fToast = FToast();
   fToast.init(context);
